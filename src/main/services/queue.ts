@@ -5,6 +5,8 @@ import { StorageService } from './storage';
 import { ulid } from 'ulid';
 import log from 'electron-log/main';
 import { BrowserWindow } from 'electron';
+import fs from 'node:fs';
+import path from 'node:path';
 import type { Idea } from '../../shared/schemas';
 
 
@@ -112,9 +114,29 @@ export class JobQueue {
       const inputPayload = JSON.stringify({
         title: idea.title,
         description: idea.description,
+        extendedDescription: idea.extended_description,
         skill: idea.skill,
-        category: idea.category
-      });
+        category: idea.category,
+        tags: idea.tags
+      }) + "\n\nCRITICAL VISUAL CONSTRAINT: I have provided TWO reference border templates (Portrait and Landscape). Based on the subject, CHOOSE ONLY ONE that fits best. Generate the coloring content INSIDE that chosen border. Ignore the other border. Do NOT output two images, just ONE filling the chosen orientation. \n\nIMPORTANT: Do NOT fill areas with solid black ink. Use outlines only. No silhouettes or heavy shadows.";
+      
+      // Load Template Images
+      const templateImages: Buffer[] = [];
+      try {
+        const templates = ['BORDER_PORTRAIT.png', 'BORDER_LANDSCAPE.png'];
+        
+        for (const tpl of templates) {
+             const templatePath = path.join(process.cwd(), 'resources', 'templates', tpl);
+             if (fs.existsSync(templatePath)) {
+                templateImages.push(fs.readFileSync(templatePath));
+                log.info(`[Job ${idea.id}] Loaded border template: ${templatePath}`);
+             } else {
+                log.warn(`[Job ${idea.id}] Border template not found at ${templatePath}`);
+             }
+        }
+      } catch (e) {
+        log.error(`[Job ${idea.id}] Failed to load template images`, e);
+      }
 
       const start = Date.now();
       
@@ -134,7 +156,7 @@ export class JobQueue {
         log.info(`[Job ${idea.id}] Progress: ${text.substring(0, 50)}...`);
       };
 
-      const imageBuffer = await gemini.generateImage(inputPayload, handleProgress);
+      const imageBuffer = await gemini.generateImage(inputPayload, handleProgress, templateImages);
       const duration = Date.now() - start;
 
       // Save Image

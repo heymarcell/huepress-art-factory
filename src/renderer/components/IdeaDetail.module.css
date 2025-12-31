@@ -467,11 +467,19 @@
   box-shadow: 0 0 0 1px var(--color-accent);
 }
 
+.versionThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* Show distinct full image, don't crop to white space */
+  background-color: #000; /* Dark background to frame the white page */
+}
+
+/* 
 .versionImg {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
+} */
 
 /* Footer */
 .footer {
@@ -560,7 +568,62 @@
   max-height: 95vh;
   object-fit: contain;
   box-shadow: 0 0 50px rgba(0,0,0,0.5);
+  transform-origin: center;
+  transition: transform 0.1s ease-out; /* Smooth zoom */
+  cursor: grab;
 }
+
+.lightboxImage:active {
+  cursor: grabbing;
+}
+
+.lightboxToolbar {
+  position: absolute;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background-color: rgba(20, 20, 20, 0.8);
+  backdrop-filter: blur(8px);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 1010;
+  animation: slideUp 0.2s ease-out;
+}
+
+.lightboxButton {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.lightboxButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.zoomLevel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 60px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+  user-select: none;
+}
+
 
 .lightboxClose {
   position: absolute;

@@ -1,5 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-import { SYSTEM_INSTRUCTION } from './prompts';
+import { getSystemInstruction } from './prompts';
 
 
 interface GenerationParams {
@@ -16,43 +16,62 @@ export class GeminiService {
 
   async generateImage(
     userInput: string,
-    onProgress?: (text: string) => void
+    onProgress?: (text: string) => void,
+    templateImages: Buffer[] = []
   ): Promise<Buffer> {
-    // User insisted on this specific model
     const model = 'gemini-3-pro-image-preview';
-
-    // Log start
-    if (onProgress) onProgress('Initializing image generation with Gemini...');
-
-    // Tools setup per user snippet
+    
+    // Tools configuration (Google Search etc - disabled for image gen usually, but kept if needed)
     const tools = [
-      {
-        googleSearch: {}
-      },
+      { googleSearch: {} }
     ];
 
-    // Config setup per user snippet
+    // Parse user input to find skill
+    let skill = 'Medium';
+    try {
+      const parsed = JSON.parse(userInput.split('\n\n')[0]); // Handle appended negative prompt
+      if (parsed.skill) skill = parsed.skill;
+    } catch (e) {
+      // ignore
+    }
+
+    const systemInstruction = getSystemInstruction(skill);
+
+    // Build parts
+    const parts: any[] = [{ text: userInput }];
+    
+    if (templateImages && templateImages.length > 0) {
+      templateImages.forEach(img => {
+        parts.push({
+          inlineData: {
+            mimeType: 'image/png',
+            data: img.toString('base64')
+          }
+        });
+      });
+    }
+
     const config = {
-      temperature: 0.95,
-      responseModalities: ['IMAGE', 'TEXT'],
-      // mediaResolution: 'MEDIA_RESOLUTION_HIGH', // Input-only param, likely causing error on text-only requests
+      responseModalities: ['IMAGE'],
       imageConfig: {
         imageSize: '4K',
+        // Attempting to pass negative prompt if supported by the underlying model pipeline
+        // @ts-ignore - The SDK types might not match the specific model capabilities
+        negativePrompt: "frame, border, rectangle, square, box, page border, edge to edge, full bleed, cropping, text, watermark, logo, signature, solid black, filled shapes, heavy shadow, silhouette, dark background"
       },
-      tools,
-      systemInstruction: SYSTEM_INSTRUCTION.parts,
+      // tools, // Tools often conflict with image generation models, disabling for safety unless needed
+      systemInstruction: systemInstruction.parts,
     };
 
     const contents = [
       {
         role: 'user',
-        parts: [{ text: userInput }]
+        parts: parts
       }
     ];
 
     try {
       // Using generateContentStream allows catching errors early and potential text feedback
-      // Cast config to any to avoid type issues with newer fields like imageConfig
       const response = await this.client.models.generateContentStream({
         model,
         contents,

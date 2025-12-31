@@ -25,8 +25,10 @@ import styles from './Library.module.css';
 const STATUS_OPTIONS: IdeaStatus[] = [
   'Imported',
   'Queued',
+  'Generating',
   'Generated',
   'NeedsAttention',
+  'Failed',
   'Approved',
   'Exported',
   'Omitted',
@@ -77,8 +79,20 @@ export function Library() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Listen for background job progress to auto-refresh list
+  useEffect(() => {
+    if (!window.huepress?.jobs?.onProgress) return;
 
+    const unsubscribe = window.huepress.jobs.onProgress((data) => {
+      // Invalidate queries when we see progress updates
+      // This ensures the list reflects state changes (Queued -> Generating -> Generated/Failed)
+      queryClient.invalidateQueries({ queryKey: ['ideas'] });
+    });
 
+    return () => {
+      unsubscribe();
+    };
+  }, [queryClient]);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['ideas', filters],
@@ -94,8 +108,10 @@ export function Library() {
       }
       return result.data;
     },
+    // Keep polling as backup for active states
     refetchInterval: (query) => {
       const state = query.state.data as { ideas: Idea[] } | undefined;
+      // If any visible ideas are in transient states, poll frequently
       if (state?.ideas?.some((i: Idea) => i.status === 'Queued' || i.status === 'Generating')) {
         return 1000;
       }
@@ -329,6 +345,25 @@ export function Library() {
   const hasActiveFilters = filters.status.length > 0 || filters.category || filters.skill;
   const total = data?.total || 0;
 
+  /* New state for stable navigation */
+  const [navigationSnapshot, setNavigationSnapshot] = useState<Idea[] | null>(null);
+
+  /* ... (existing state) ... */
+
+  /* Helper to open detail and freeze list order */
+  const openDetail = (idea: Idea) => {
+    setNavigationSnapshot(filteredAndSortedIdeas);
+    setSelectedIdea(idea);
+  };
+
+  /* Helper to close detail */
+  const closeDetail = () => {
+    setSelectedIdea(null);
+    setNavigationSnapshot(null);
+  };
+
+  /* ... (existing effects) ... */
+
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -337,6 +372,8 @@ export function Library() {
       if (tagName === 'INPUT' || tagName === 'TEXTAREA') {
         return;
       }
+
+      const activeList = navigationSnapshot || filteredAndSortedIdeas;
 
       if (selectedIdea) {
         if (e.key === 'g' || e.key === 'G') {
@@ -349,23 +386,23 @@ export function Library() {
         }
         if (e.key === 'ArrowDown') {
            e.preventDefault();
-           const currentIndex = filteredAndSortedIdeas.findIndex(i => i.id === selectedIdea.id);
-           if (currentIndex !== -1 && currentIndex < filteredAndSortedIdeas.length - 1) {
-              setSelectedIdea(filteredAndSortedIdeas[currentIndex + 1]);
+           const currentIndex = activeList.findIndex(i => i.id === selectedIdea.id);
+           if (currentIndex !== -1 && currentIndex < activeList.length - 1) {
+              setSelectedIdea(activeList[currentIndex + 1]);
            }
         }
         if (e.key === 'ArrowUp') {
            e.preventDefault();
-           const currentIndex = filteredAndSortedIdeas.findIndex(i => i.id === selectedIdea.id);
+           const currentIndex = activeList.findIndex(i => i.id === selectedIdea.id);
            if (currentIndex > 0) {
-              setSelectedIdea(filteredAndSortedIdeas[currentIndex - 1]);
+              setSelectedIdea(activeList[currentIndex - 1]);
            }
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedIdea, filteredAndSortedIdeas, handleGenerate, handleStatusChange]);
+  }, [selectedIdea, filteredAndSortedIdeas, navigationSnapshot, handleGenerate, handleStatusChange]);
 
   return (
     <div className={styles.library}>
@@ -660,7 +697,7 @@ export function Library() {
                 isSelecting={isSelecting}
                 isSelected={selectedIds.has(idea.id)}
                 onToggleSelect={() => toggleSelection(idea.id)}
-                onClick={() => !isSelecting && setSelectedIdea(idea)}
+                onClick={() => !isSelecting && openDetail(idea)}
                 viewMode={viewMode}
               />
             ))}
@@ -672,7 +709,7 @@ export function Library() {
       {selectedIdea && (
         <IdeaDetail
           idea={data?.ideas?.find((i: Idea) => i.id === selectedIdea.id) || selectedIdea}
-          onClose={() => setSelectedIdea(null)}
+          onClose={closeDetail}
           onStatusChange={handleStatusChange}
           onDelete={() => handleDelete(selectedIdea.id)}
           onGenerate={() => handleGenerate(selectedIdea.id)}

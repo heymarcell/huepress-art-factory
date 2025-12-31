@@ -150,6 +150,11 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
     </>
   );
 
+  /* Lightbox State */
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [resolution, setResolution] = useState<{w: number, h: number} | null>(null);
 
   useEffect(() => {
@@ -157,11 +162,98 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
     setResolution(null);
   }, [idea.image_path, idea.selected_attempt_id]);
 
+  /* Reset Lightbox on open/close */
+  useEffect(() => {
+    if (!showLightbox) {
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+    }
+  }, [showLightbox]);
+
+  const handleZoom = (delta: number) => {
+    setZoom(prev => Math.min(5, Math.max(1, prev + delta)));
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    e.stopPropagation();
+    if (e.ctrlKey || e.metaKey || showLightbox) {
+      // Zoom
+      const delta = -e.deltaY * 0.005;
+      setZoom(prev => Math.min(5, Math.max(1, prev + delta)));
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (zoom > 1) {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging && zoom > 1) {
+      setPan({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  /* Smart ESC Logic */
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore inputs
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (e.key === 'Escape') {
+        if (showLightbox) {
+          setShowLightbox(false);
+          e.stopPropagation();
+          return;
+        } else {
+          onClose(); // Close detail panel
+          return;
+        }
+      }
+
+      // Existing Arrow logic
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        if (validAttempts.length < 2) return;
+        e.preventDefault();
+
+        const currentId = idea.selected_attempt_id || validAttempts[0]?.id;
+        const idx = validAttempts.findIndex(a => a.id === currentId);
+        if (idx === -1) return;
+
+        let newIdx = idx;
+        if (e.key === 'ArrowRight') {
+          newIdx = Math.min(validAttempts.length - 1, idx + 1);
+        } else {
+          newIdx = Math.max(0, idx - 1);
+        }
+
+        if (newIdx !== idx && onVersionChange) {
+          onVersionChange(validAttempts[newIdx].id);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [validAttempts, idea.selected_attempt_id, onVersionChange, showLightbox, onClose]);
+
+  // ... (render) ...
+
   return (
     <>
       <div className={styles.overlay} onClick={onClose}>
+        {/* ... (panel code remains same) ... */}
         <div className={styles.panel} onClick={(e) => e.stopPropagation()}>
-          <header className={styles.header}>
+           {/* ... header ... */}
+           <header className={styles.header}>
             <h2 className={styles.title}>{idea.title}</h2>
             <div className={styles.headerActions}>
               <div className={styles.badges}>
@@ -186,7 +278,6 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
             </div>
           </header>
 
-          
           <div className={styles.body}>
             {/* Left Side: Image & Versions */}
             <div className={styles.imageContainer}>
@@ -261,8 +352,6 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
 
             {/* Right Side: Details */}
             <div className={styles.content}>
-
-            {/* Status and Skill removed from here */}
 
             {/* Description */}
             <section className={styles.section}>
@@ -418,13 +507,40 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
 
       {/* Lightbox */}
       {showLightbox && idea.image_path && (
-        <div className={styles.lightbox} onClick={() => setShowLightbox(false)}>
+        <div 
+           className={styles.lightbox} 
+           onClick={() => setShowLightbox(false)}
+           onWheel={handleWheel}
+           onMouseDown={handleMouseDown}
+           onMouseMove={handleMouseMove}
+           onMouseUp={handleMouseUp}
+           onMouseLeave={handleMouseUp}
+        >
            <img 
              src={`asset://${idea.image_path}`} 
              alt={idea.title} 
              className={styles.lightboxImage} 
-             onClick={(e) => e.stopPropagation()} 
+             onClick={(e) => e.stopPropagation()}
+             style={{
+               transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+               cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default'
+             }}
+             draggable={false}
            />
+           
+           {/* Floating Toolbar */}
+           <div className={styles.lightboxToolbar} onClick={(e) => e.stopPropagation()}>
+             <button className={styles.lightboxButton} onClick={() => handleZoom(-0.5)}>
+               -
+             </button>
+             <span className={styles.zoomLevel}>
+               {Math.round(zoom * 100)}%
+             </span>
+             <button className={styles.lightboxButton} onClick={() => handleZoom(0.5)}>
+               +
+             </button>
+           </div>
+
            <button className={styles.lightboxClose} onClick={() => setShowLightbox(false)}>
              <X size={24} />
            </button>
