@@ -45,6 +45,70 @@
   background-color: var(--color-accent-hover);
 }
 
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.btnSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.btnSecondary:hover:not(:disabled) {
+  background-color: var(--color-bg-hover);
+}
+
+.btnDanger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--color-error);
+  color: white;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.btnDanger:hover:not(:disabled) {
+  background-color: #d32f2f;
+}
+
+.btnDanger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btnGhost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+}
+
+.btnGhost:hover {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+.selectionCount {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
 /* Toolbar */
 .toolbar {
   display: flex;
@@ -209,6 +273,7 @@
 
 /* Card */
 .card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -283,4 +348,21 @@
 .category {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
+}
+
+/* Selection Mode */
+.checkbox {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  color: var(--color-text-muted);
+}
+
+.checkboxChecked {
+  color: var(--color-accent);
+}
+
+.cardSelected {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-subtle);
 }

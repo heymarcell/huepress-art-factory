@@ -243,3 +243,23 @@
   background-color: #45a049;
   border-color: transparent;
 }
+
+.deleteButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  flex-shrink: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  transition: all var(--transition-fast);
+}
+
+.deleteButton:hover {
+  background-color: var(--color-error-subtle);
+  border-color: var(--color-error);
+  color: var(--color-error);
+}

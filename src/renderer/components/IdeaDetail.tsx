@@ -1,4 +1,4 @@
-import { X, Palette, Check, Tag, Lightbulb, Heart, FileText } from 'lucide-react';
+import { X, Palette, Check, Tag, Lightbulb, Heart, FileText, Trash2 } from 'lucide-react';
 import type { Idea } from '../../shared/schemas';
 import styles from './IdeaDetail.module.css';
 
@@ -6,6 +6,7 @@ interface IdeaDetailProps {
   idea: Idea;
   onClose: () => void;
   onStatusChange?: (status: Idea['status']) => void;
+  onDelete?: () => void;
 }
 
 const STATUS_OPTIONS: Idea['status'][] = [
@@ -17,7 +18,7 @@ const STATUS_OPTIONS: Idea['status'][] = [
   'Exported',
 ];
 
-export function IdeaDetail({ idea, onClose, onStatusChange }: IdeaDetailProps) {
+export function IdeaDetail({ idea, onClose, onStatusChange, onDelete }: IdeaDetailProps) {
   const handleStatusChange = (newStatus: Idea['status']) => {
     if (onStatusChange) {
       onStatusChange(newStatus);
@@ -168,7 +169,7 @@ export function IdeaDetail({ idea, onClose, onStatusChange }: IdeaDetailProps) {
         <footer className={styles.footer}>
           <button className={styles.actionButton} disabled title="Coming in M2">
             <Palette size={14} />
-            Generate Image
+            Generate
           </button>
           <button
             className={`${styles.actionButton} ${styles.approveButton}`}
@@ -178,6 +179,11 @@ export function IdeaDetail({ idea, onClose, onStatusChange }: IdeaDetailProps) {
             <Check size={14} />
             Approve
           </button>
+          {onDelete && (
+            <button className={styles.deleteButton} onClick={onDelete}>
+              <Trash2 size={14} />
+            </button>
+          )}
         </footer>
       </div>
     </div>

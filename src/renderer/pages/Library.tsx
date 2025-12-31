@@ -7,6 +7,10 @@ import {
   RefreshCw,
   AlertCircle,
   Grid,
+  Trash2,
+  CheckSquare,
+  Square,
+  X,
 } from 'lucide-react';
 import type { Idea, IdeaStatus } from '../../shared/schemas';
 import { IdeaDetail } from '../components/IdeaDetail';
@@ -31,6 +35,8 @@ export function Library() {
     search: '',
   });
   const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isSelecting, setIsSelecting] = useState(false);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['ideas', filters],
@@ -62,6 +68,40 @@ export function Library() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const result = await window.huepress.ideas.delete(id);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ideas'] });
+      queryClient.invalidateQueries({ queryKey: ['project-info'] });
+      setSelectedIdea(null);
+    },
+  });
+
+  const batchDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      // Delete one by one (could be optimized with batch endpoint later)
+      for (const id of ids) {
+        const result = await window.huepress.ideas.delete(id);
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+      }
+      return { deleted: ids.length };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ideas'] });
+      queryClient.invalidateQueries({ queryKey: ['project-info'] });
+      setSelectedIds(new Set());
+      setIsSelecting(false);
+    },
+  });
+
   const toggleStatusFilter = (status: IdeaStatus) => {
     setFilters((prev) => ({
       ...prev,
@@ -78,6 +118,42 @@ export function Library() {
     }
   };
 
+  const handleDelete = (id: string) => {
+    if (confirm('Delete this idea? This cannot be undone.')) {
+      deleteMutation.mutate(id);
+    }
+  };
+
+  const handleBatchDelete = () => {
+    if (selectedIds.size === 0) return;
+    if (confirm(`Delete ${selectedIds.size} selected ideas? This cannot be undone.`)) {
+      batchDeleteMutation.mutate(Array.from(selectedIds));
+    }
+  };
+
+  const toggleSelection = (id: string) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedIds(newSet);
+  };
+
+  const selectAll = () => {
+    if (ideas.length === selectedIds.size) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(ideas.map((i) => i.id)));
+    }
+  };
+
+  const cancelSelection = () => {
+    setSelectedIds(new Set());
+    setIsSelecting(false);
+  };
+
   const ideas = data?.ideas || [];
   const total = data?.total || 0;
 
@@ -89,10 +165,44 @@ export function Library() {
           <h1 className={styles.title}>Library</h1>
           <p className={styles.subtitle}>{total} ideas in collection</p>
         </div>
-        <Link to="/import" className={styles.btnPrimary}>
-          <Plus size={14} />
-          Import
-        </Link>
+        <div className={styles.headerActions}>
+          {!isSelecting ? (
+            <>
+              <button
+                onClick={() => setIsSelecting(true)}
+                className={styles.btnSecondary}
+                disabled={ideas.length === 0}
+              >
+                <CheckSquare size={14} />
+                Select
+              </button>
+              <Link to="/import" className={styles.btnPrimary}>
+                <Plus size={14} />
+                Import
+              </Link>
+            </>
+          ) : (
+            <>
+              <span className={styles.selectionCount}>
+                {selectedIds.size} selected
+              </span>
+              <button onClick={selectAll} className={styles.btnSecondary}>
+                {selectedIds.size === ideas.length ? 'Deselect All' : 'Select All'}
+              </button>
+              <button
+                onClick={handleBatchDelete}
+                className={styles.btnDanger}
+                disabled={selectedIds.size === 0 || batchDeleteMutation.isPending}
+              >
+                <Trash2 size={14} />
+                {batchDeleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              </button>
+              <button onClick={cancelSelection} className={styles.btnGhost}>
+                <X size={14} />
+              </button>
+            </>
+          )}
+        </div>
       </header>
 
       {/* Toolbar */}
@@ -172,7 +282,10 @@ export function Library() {
               <IdeaCard
                 key={idea.id}
                 idea={idea}
-                onClick={() => setSelectedIdea(idea)}
+                isSelecting={isSelecting}
+                isSelected={selectedIds.has(idea.id)}
+                onToggleSelect={() => toggleSelection(idea.id)}
+                onClick={() => !isSelecting && setSelectedIdea(idea)}
               />
             ))}
           </div>
@@ -185,15 +298,44 @@ export function Library() {
           idea={selectedIdea}
           onClose={() => setSelectedIdea(null)}
           onStatusChange={handleStatusChange}
+          onDelete={() => handleDelete(selectedIdea.id)}
         />
       )}
     </div>
   );
 }
 
-function IdeaCard({ idea, onClick }: { idea: Idea; onClick: () => void }) {
+interface IdeaCardProps {
+  idea: Idea;
+  isSelecting: boolean;
+  isSelected: boolean;
+  onToggleSelect: () => void;
+  onClick: () => void;
+}
+
+function IdeaCard({ idea, isSelecting, isSelected, onToggleSelect, onClick }: IdeaCardProps) {
+  const handleClick = () => {
+    if (isSelecting) {
+      onToggleSelect();
+    } else {
+      onClick();
+    }
+  };
+
   return (
-    <div className={styles.card} onClick={onClick}>
+    <div
+      className={`${styles.card} ${isSelected ? styles.cardSelected : ''}`}
+      onClick={handleClick}
+    >
+      {isSelecting && (
+        <div className={styles.checkbox}>
+          {isSelected ? (
+            <CheckSquare size={18} className={styles.checkboxChecked} />
+          ) : (
+            <Square size={18} />
+          )}
+        </div>
+      )}
       <div className={styles.cardHeader}>
         <span className={`${styles.statusBadge} ${styles[`status${idea.status}`]}`}>
           {idea.status}
