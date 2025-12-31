@@ -11,6 +11,9 @@ import {
   CheckSquare,
   Square,
   X,
+  LayoutGrid,
+  List,
+  ChevronDown,
 } from 'lucide-react';
 import type { Idea, IdeaStatus } from '../../shared/schemas';
 import { IdeaDetail } from '../components/IdeaDetail';
@@ -37,6 +40,8 @@ export function Library() {
   const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSelecting, setIsSelecting] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['ideas', filters],
@@ -85,7 +90,6 @@ export function Library() {
 
   const batchDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      // Delete one by one (could be optimized with batch endpoint later)
       for (const id of ids) {
         const result = await window.huepress.ideas.delete(id);
         if (!result.success) {
@@ -99,6 +103,25 @@ export function Library() {
       queryClient.invalidateQueries({ queryKey: ['project-info'] });
       setSelectedIds(new Set());
       setIsSelecting(false);
+    },
+  });
+
+  const batchStatusMutation = useMutation({
+    mutationFn: async ({ ids, status }: { ids: string[]; status: IdeaStatus }) => {
+      for (const id of ids) {
+        const result = await window.huepress.ideas.updateFields(id, { status });
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+      }
+      return { updated: ids.length };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ideas'] });
+      queryClient.invalidateQueries({ queryKey: ['project-info'] });
+      setSelectedIds(new Set());
+      setIsSelecting(false);
+      setShowStatusMenu(false);
     },
   });
 
@@ -131,6 +154,11 @@ export function Library() {
     }
   };
 
+  const handleBatchStatusChange = (status: IdeaStatus) => {
+    if (selectedIds.size === 0) return;
+    batchStatusMutation.mutate({ ids: Array.from(selectedIds), status });
+  };
+
   const toggleSelection = (id: string) => {
     const newSet = new Set(selectedIds);
     if (newSet.has(id)) {
@@ -145,13 +173,14 @@ export function Library() {
     if (ideas.length === selectedIds.size) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(ideas.map((i) => i.id)));
+      setSelectedIds(new Set(ideas.map((i: Idea) => i.id)));
     }
   };
 
   const cancelSelection = () => {
     setSelectedIds(new Set());
     setIsSelecting(false);
+    setShowStatusMenu(false);
   };
 
   const ideas = data?.ideas || [];
@@ -168,6 +197,22 @@ export function Library() {
         <div className={styles.headerActions}>
           {!isSelecting ? (
             <>
+              <div className={styles.viewToggle}>
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`${styles.viewBtn} ${viewMode === 'grid' ? styles.viewBtnActive : ''}`}
+                  title="Grid view"
+                >
+                  <LayoutGrid size={16} />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`${styles.viewBtn} ${viewMode === 'list' ? styles.viewBtnActive : ''}`}
+                  title="List view"
+                >
+                  <List size={16} />
+                </button>
+              </div>
               <button
                 onClick={() => setIsSelecting(true)}
                 className={styles.btnSecondary}
@@ -189,6 +234,32 @@ export function Library() {
               <button onClick={selectAll} className={styles.btnSecondary}>
                 {selectedIds.size === ideas.length ? 'Deselect All' : 'Select All'}
               </button>
+              
+              {/* Status dropdown */}
+              <div className={styles.dropdown}>
+                <button
+                  onClick={() => setShowStatusMenu(!showStatusMenu)}
+                  className={styles.btnSecondary}
+                  disabled={selectedIds.size === 0 || batchStatusMutation.isPending}
+                >
+                  Set Status
+                  <ChevronDown size={14} />
+                </button>
+                {showStatusMenu && (
+                  <div className={styles.dropdownMenu}>
+                    {STATUS_OPTIONS.map((status) => (
+                      <button
+                        key={status}
+                        onClick={() => handleBatchStatusChange(status)}
+                        className={styles.dropdownItem}
+                      >
+                        {status}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <button
                 onClick={handleBatchDelete}
                 className={styles.btnDanger}
@@ -277,8 +348,8 @@ export function Library() {
         )}
 
         {!isLoading && !isError && ideas.length > 0 && (
-          <div className={styles.grid}>
-            {ideas.map((idea) => (
+          <div className={viewMode === 'grid' ? styles.grid : styles.listView}>
+            {ideas.map((idea: Idea) => (
               <IdeaCard
                 key={idea.id}
                 idea={idea}
@@ -286,6 +357,7 @@ export function Library() {
                 isSelected={selectedIds.has(idea.id)}
                 onToggleSelect={() => toggleSelection(idea.id)}
                 onClick={() => !isSelecting && setSelectedIdea(idea)}
+                viewMode={viewMode}
               />
             ))}
           </div>
@@ -311,9 +383,10 @@ interface IdeaCardProps {
   isSelected: boolean;
   onToggleSelect: () => void;
   onClick: () => void;
+  viewMode: 'grid' | 'list';
 }
 
-function IdeaCard({ idea, isSelecting, isSelected, onToggleSelect, onClick }: IdeaCardProps) {
+function IdeaCard({ idea, isSelecting, isSelected, onToggleSelect, onClick, viewMode }: IdeaCardProps) {
   const handleClick = () => {
     if (isSelecting) {
       onToggleSelect();
@@ -321,6 +394,31 @@ function IdeaCard({ idea, isSelecting, isSelected, onToggleSelect, onClick }: Id
       onClick();
     }
   };
+
+  if (viewMode === 'list') {
+    return (
+      <div
+        className={`${styles.listItem} ${isSelected ? styles.listItemSelected : ''}`}
+        onClick={handleClick}
+      >
+        {isSelecting && (
+          <div className={styles.listCheckbox}>
+            {isSelected ? (
+              <CheckSquare size={16} className={styles.checkboxChecked} />
+            ) : (
+              <Square size={16} />
+            )}
+          </div>
+        )}
+        <span className={`${styles.listStatus} ${styles[`status${idea.status}`]}`}>
+          {idea.status}
+        </span>
+        <span className={styles.listTitle}>{idea.title}</span>
+        <span className={styles.listCategory}>{idea.category}</span>
+        <span className={styles.listSkill}>{idea.skill}</span>
+      </div>
+    );
+  }
 
   return (
     <div
