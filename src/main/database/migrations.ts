@@ -137,6 +137,13 @@ Requirements:
       );
     `,
   },
+  {
+    version: 3,
+    name: 'add_selected_attempt',
+    up: `
+      ALTER TABLE ideas ADD COLUMN selected_attempt_id TEXT REFERENCES generation_attempts(id) ON DELETE SET NULL;
+    `,
+  },
 ];
 
 /**

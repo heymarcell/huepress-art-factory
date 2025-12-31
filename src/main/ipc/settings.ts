@@ -50,6 +50,15 @@ function loadSettings(): void {
       settings = { ...defaults, ...loaded };
       log.info('Settings loaded from:', filePath);
     }
+    
+    // Ensure default assets path is set if missing
+    if (!settings.assetsPath) {
+      settings.assetsPath = path.join(app.getPath('userData'), 'assets');
+      if (!fs.existsSync(settings.assetsPath)) {
+        fs.mkdirSync(settings.assetsPath, { recursive: true });
+      }
+      log.info('Default assets path configured:', settings.assetsPath);
+    }
   } catch (error) {
     log.error('Error loading settings:', error);
     settings = { ...defaults };
@@ -193,4 +202,8 @@ export function getApiKey(): string | null {
     log.error('Error decrypting API key:', error);
     return null;
   }
+}
+
+export function getSettings(): StoredSettings {
+  return settings;
 }

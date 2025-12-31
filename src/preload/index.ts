@@ -1,7 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { IPC_CHANNELS } from '../shared/ipc-channels';
+import { IPC_CHANNELS, type IpcResponse } from '../shared/ipc-channels';
 import type {
-  IpcResponse,
   Idea,
   IdeaFilters,
   Batch,
@@ -69,6 +68,18 @@ const huepressApi = {
       status: Idea['status']
     ): Promise<IpcResponse<{ updated: number }>> =>
       ipcRenderer.invoke(IPC_CHANNELS.IDEAS_SET_STATUS, { ids, status }),
+
+    /**
+     * Get generation attempts (history) for an idea
+     */
+    getAttempts: (id: string): Promise<IpcResponse<any[]>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.IDEAS_GET_ATTEMPTS, id),
+
+    /**
+     * Set the active version for an idea
+     */
+    setVersion: (ideaId: string, attemptId: string): Promise<IpcResponse<{ updated: boolean }>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.IDEAS_SET_VERSION, { ideaId, attemptId }),
   },
 
   // =========================================================================

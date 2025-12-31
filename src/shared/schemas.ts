@@ -38,8 +38,10 @@ export const IdeaStatusSchema = z.enum([
   "Generating",
   "Generated",
   "NeedsAttention",
+  "Failed",
   "Approved",
   "Exported",
+  "Omitted",
 ]);
 
 export type IdeaStatus = z.infer<typeof IdeaStatusSchema>;
@@ -64,6 +66,8 @@ export interface Idea {
   meta_keywords: string[] | null;
   status: IdeaStatus;
   dedupe_hash: string;
+  image_path?: string | null;
+  selected_attempt_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -122,6 +126,7 @@ export interface JobProgress {
   ideaId: string;
   status: "pending" | "running" | "completed" | "failed";
   progress?: number;
+  message?: string;
   error?: string;
 }
 

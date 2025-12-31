@@ -1,10 +1,11 @@
 import { ipcMain } from 'electron';
 import log from 'electron-log/main';
 import { IPC_CHANNELS, successResponse, errorResponse } from '../../shared/ipc-channels';
+import { jobQueue } from '../services/queue';
 
 /**
  * Jobs IPC handlers
- * Note: Full implementation is M2 scope. These are stubs for the API surface.
+ * Implements M2 generation pipeline.
  */
 
 export function registerJobsHandlers(): void {
@@ -15,12 +16,13 @@ export function registerJobsHandlers(): void {
         return errorResponse('ideaIds must be an array');
       }
 
-      // TODO (M2): Implement actual job queue
-      log.info(`[Jobs] Enqueue requested for ${ideaIds.length} ideas (not yet implemented)`);
+      await jobQueue.add(ideaIds as string[]);
+      const stats = await jobQueue.getStats();
 
       return successResponse({
-        queued: 0,
-        message: 'Job queue not yet implemented (M2)',
+        queued: ideaIds.length,
+        message: 'Jobs enqueued successfully',
+        stats // Return updated stats
       });
     } catch (error) {
       log.error('Error enqueueing jobs:', error);
@@ -35,12 +37,11 @@ export function registerJobsHandlers(): void {
         return errorResponse('jobId must be a string');
       }
 
-      // TODO (M2): Implement actual job cancellation
-      log.info(`[Jobs] Cancel requested for job ${jobId} (not yet implemented)`);
+      await jobQueue.cancel(jobId);
 
       return successResponse({
-        cancelled: false,
-        message: 'Job queue not yet implemented (M2)',
+        cancelled: true,
+        message: 'Job cancelled',
       });
     } catch (error) {
       log.error('Error cancelling job:', error);
@@ -48,17 +49,20 @@ export function registerJobsHandlers(): void {
     }
   });
 
-  // Retry a failed job
+  // Retry a failed job (re-enqueue)
   ipcMain.handle(IPC_CHANNELS.JOBS_RETRY, async (_event, jobId: unknown) => {
     try {
       if (typeof jobId !== 'string') {
         return errorResponse('jobId must be a string');
       }
+      
+      // Retry is effectively just re-adding to queue
+      await jobQueue.add([jobId]);
 
-      // TODO (M2): Implement actual job retry
-      log.info(`[Jobs] Retry requested for job ${jobId} (not yet implemented)`);
-
-      return errorResponse('Job queue not yet implemented (M2)');
+      return successResponse({
+        retried: true,
+        message: 'Job re-queued',
+      });
     } catch (error) {
       log.error('Error retrying job:', error);
       return errorResponse(error instanceof Error ? error.message : 'Unknown error');
@@ -68,18 +72,13 @@ export function registerJobsHandlers(): void {
   // Get queue statistics
   ipcMain.handle(IPC_CHANNELS.JOBS_GET_STATS, async () => {
     try {
-      // TODO (M2): Return actual queue stats
-      return successResponse({
-        pending: 0,
-        running: 0,
-        completed: 0,
-        failed: 0,
-      });
+      const stats = await jobQueue.getStats();
+      return successResponse(stats);
     } catch (error) {
       log.error('Error getting job stats:', error);
       return errorResponse(error instanceof Error ? error.message : 'Unknown error');
     }
   });
 
-  log.info('[Jobs] Handlers registered (stubs for M2)');
+  log.info('[Jobs] Handlers registered (M2 implementation)');
 }

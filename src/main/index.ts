@@ -1,10 +1,24 @@
-import { app, BrowserWindow, session } from 'electron';
+import { app, BrowserWindow, session, protocol } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import log from 'electron-log/main';
 import { initializeDatabase } from './database';
 import { registerIpcHandlers } from './ipc';
 import { setupSecurity, CSP } from './security';
+
+// Register custom protocol privileges
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'asset',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      bypassCSP: true, // Additional safety
+      stream: true,
+    },
+  },
+]);
 
 // Configure logging
 log.initialize();
@@ -15,6 +29,9 @@ log.transports.console.level = 'debug';
 if (started) {
   app.quit();
 }
+
+// Suppress annoying DevTools/Autofill warnings
+app.commandLine.appendSwitch('disable-features', 'AutofillServerCommunication');
 
 // Declare for Vite plugin globals
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
@@ -94,6 +111,21 @@ const initialize = async (): Promise<void> => {
     // Register IPC handlers
     registerIpcHandlers();
     log.info('IPC handlers registered');
+
+    // Register asset protocol for loading local images
+    session.defaultSession.protocol.registerFileProtocol('asset', (request, callback) => {
+      const url = request.url.replace('asset://', '');
+      try {
+        const decodedUrl = decodeURIComponent(url);
+        // On macOS/Linux, absolute paths start with / so we need to ensure we don't lose it if stripped
+        // Use standard URL parsing if possible, or just treat as path
+        // request.url is "asset:///Users/..."
+        // url becomes "/Users/..." which is correct for *nix
+        callback(decodedUrl);
+      } catch (error) {
+        log.error('Failed to register file protocol', error);
+      }
+    });
 
     // Setup security handlers
     setupSecurity(session.defaultSession);

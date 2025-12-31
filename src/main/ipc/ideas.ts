@@ -14,7 +14,6 @@ import {
   IdeaArraySchema,
   IdeaStatusSchema,
   type Idea,
-  type IdeaFilters,
   type IdeaInput,
 } from '../../shared/schemas';
 
@@ -42,6 +41,11 @@ const UpdateFieldsSchema = z.object({
     category: z.string().optional(),
     skill: z.string().optional(),
   }),
+});
+
+const SetVersionSchema = z.object({
+  ideaId: z.string(),
+  attemptId: z.string(),
 });
 
 // =============================================================================
@@ -88,6 +92,8 @@ function rowToIdea(row: Record<string, unknown>): Idea {
     meta_keywords: parseJsonArray(row.meta_keywords as string | null),
     status: row.status as Idea['status'],
     dedupe_hash: row.dedupe_hash as string,
+    image_path: row.image_path as string | null | undefined,
+    selected_attempt_id: row.selected_attempt_id as string | null | undefined, 
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
   };
@@ -304,7 +310,12 @@ export function registerIdeasHandlers(): void {
 
       // Get ideas
       const query = `
-        SELECT * FROM ideas 
+        SELECT ideas.*, 
+        COALESCE(
+          (SELECT image_path FROM generation_attempts WHERE id = ideas.selected_attempt_id),
+          (SELECT image_path FROM generation_attempts WHERE idea_id = ideas.id ORDER BY created_at DESC LIMIT 1)
+        ) as image_path
+        FROM ideas 
         ${whereClause}
         ORDER BY created_at DESC
         LIMIT ? OFFSET ?
@@ -333,7 +344,14 @@ export function registerIdeasHandlers(): void {
       }
 
       const db = getDatabase();
-      const row = db.prepare('SELECT * FROM ideas WHERE id = ?').get(id) as Record<string, unknown> | undefined;
+      const row = db.prepare(`
+        SELECT ideas.*, 
+        COALESCE(
+          (SELECT image_path FROM generation_attempts WHERE id = ideas.selected_attempt_id),
+          (SELECT image_path FROM generation_attempts WHERE idea_id = ideas.id ORDER BY created_at DESC LIMIT 1)
+        ) as image_path
+        FROM ideas WHERE id = ?
+      `).get(id) as Record<string, unknown> | undefined;
 
       if (!row) {
         return errorResponse('Idea not found', 'NOT_FOUND');
@@ -342,6 +360,48 @@ export function registerIdeasHandlers(): void {
       return successResponse(rowToIdea(row));
     } catch (error) {
       log.error('Error getting idea:', error);
+      return errorResponse(error instanceof Error ? error.message : 'Unknown error');
+    }
+  });
+
+  // Get attempts for idea
+  ipcMain.handle(IPC_CHANNELS.IDEAS_GET_ATTEMPTS, async (_event, id: unknown) => {
+    try {
+      if (typeof id !== 'string') {
+        return errorResponse('ID must be a string');
+      }
+
+      const db = getDatabase();
+      const attempts = db.prepare(`
+        SELECT * FROM generation_attempts 
+        WHERE idea_id = ? 
+        ORDER BY created_at DESC
+      `).all(id);
+
+      return successResponse(attempts);
+    } catch (error) {
+      log.error('Error getting attempts:', error);
+      return errorResponse(error instanceof Error ? error.message : 'Unknown error');
+    }
+  });
+
+  // Set selected version
+  ipcMain.handle(IPC_CHANNELS.IDEAS_SET_VERSION, async (_event, payload: unknown) => {
+    try {
+      const { ideaId, attemptId } = validateIpcPayload(SetVersionSchema, payload, 'ideas:set-version');
+      
+      const db = getDatabase();
+      const result = db.prepare(`
+        UPDATE ideas SET selected_attempt_id = ?, updated_at = ? WHERE id = ?
+      `).run(attemptId, new Date().toISOString(), ideaId);
+
+      if (result.changes === 0) {
+        return errorResponse('Idea not found', 'NOT_FOUND');
+      }
+
+      return successResponse({ updated: true });
+    } catch (error) {
+      log.error('Error setting version:', error);
       return errorResponse(error instanceof Error ? error.message : 'Unknown error');
     }
   });

@@ -10,7 +10,7 @@ export const CSP = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'", // Required for some UI libraries
-  "img-src 'self' data: file: blob:", // Local images and blobs for preview
+  "img-src 'self' data: file: blob: asset:", // Local images and blobs for preview
   "font-src 'self' data:",
   "connect-src 'self'", // No external connections from renderer
   "media-src 'self'",

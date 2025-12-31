@@ -29,6 +29,7 @@ const STATUS_OPTIONS: IdeaStatus[] = [
   'NeedsAttention',
   'Approved',
   'Exported',
+  'Omitted',
 ];
 
 const SKILL_OPTIONS = ['Easy', 'Medium', 'Detailed'];
@@ -76,6 +77,9 @@ export function Library() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+
+
+
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['ideas', filters],
     queryFn: async () => {
@@ -89,6 +93,13 @@ export function Library() {
         throw new Error(result.error);
       }
       return result.data;
+    },
+    refetchInterval: (query) => {
+      const state = query.state.data as { ideas: Idea[] } | undefined;
+      if (state?.ideas?.some((i: Idea) => i.status === 'Queued' || i.status === 'Generating')) {
+        return 1000;
+      }
+      return false;
     },
   });
 
@@ -196,6 +207,49 @@ export function Library() {
     },
   });
 
+  const generateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const result = await window.huepress.jobs.enqueue([id]);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ideas'] });
+      queryClient.invalidateQueries({ queryKey: ['project-info'] });
+    },
+  });
+
+  const batchGenerateMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const result = await window.huepress.jobs.enqueue(ids);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ideas'] });
+      queryClient.invalidateQueries({ queryKey: ['project-info'] });
+      setSelectedIds(new Set());
+      setIsSelecting(false);
+    },
+  });
+
+  const setVersionMutation = useMutation({
+    mutationFn: async ({ ideaId, attemptId }: { ideaId: string; attemptId: string }) => {
+      const result = await window.huepress.ideas.setVersion(ideaId, attemptId);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      return result.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ideas'] });
+    },
+  });
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -231,6 +285,18 @@ export function Library() {
     batchStatusMutation.mutate({ ids: Array.from(selectedIds), status });
   };
 
+  const handleGenerate = (id: string) => {
+    generateMutation.mutate(id);
+    if (selectedIdea && selectedIdea.id === id) {
+      setSelectedIdea({ ...selectedIdea, status: 'Queued', updated_at: new Date().toISOString() });
+    }
+  };
+
+  const handleBatchGenerate = () => {
+    if (selectedIds.size === 0) return;
+    batchGenerateMutation.mutate(Array.from(selectedIds));
+  };
+
   const toggleSelection = (id: string) => {
     const newSet = new Set(selectedIds);
     if (newSet.has(id)) {
@@ -262,6 +328,44 @@ export function Library() {
 
   const hasActiveFilters = filters.status.length > 0 || filters.category || filters.skill;
   const total = data?.total || 0;
+
+  // Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input (except if modifier keys are used, but we keep it simple)
+      const tagName = (e.target as HTMLElement).tagName;
+      if (tagName === 'INPUT' || tagName === 'TEXTAREA') {
+        return;
+      }
+
+      if (selectedIdea) {
+        if (e.key === 'g' || e.key === 'G') {
+           if (selectedIdea.status !== 'Approved') {
+              handleGenerate(selectedIdea.id);
+           }
+        }
+        if (e.key === 'a' || e.key === 'A') {
+           handleStatusChange('Approved');
+        }
+        if (e.key === 'ArrowDown') {
+           e.preventDefault();
+           const currentIndex = filteredAndSortedIdeas.findIndex(i => i.id === selectedIdea.id);
+           if (currentIndex !== -1 && currentIndex < filteredAndSortedIdeas.length - 1) {
+              setSelectedIdea(filteredAndSortedIdeas[currentIndex + 1]);
+           }
+        }
+        if (e.key === 'ArrowUp') {
+           e.preventDefault();
+           const currentIndex = filteredAndSortedIdeas.findIndex(i => i.id === selectedIdea.id);
+           if (currentIndex > 0) {
+              setSelectedIdea(filteredAndSortedIdeas[currentIndex - 1]);
+           }
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedIdea, filteredAndSortedIdeas, handleGenerate, handleStatusChange]);
 
   return (
     <div className={styles.library}>
@@ -314,6 +418,16 @@ export function Library() {
               </span>
               <button onClick={selectAll} className={styles.btnSecondary}>
                 {selectedIds.size === filteredAndSortedIdeas.length ? 'Deselect All' : 'Select All'}
+              </button>
+
+              <button
+                onClick={handleBatchGenerate}
+                className={styles.btnPrimary}
+                disabled={selectedIds.size === 0 || batchGenerateMutation.isPending}
+                style={{ marginRight: '8px' }}
+              >
+                <RefreshCw size={14} className={batchGenerateMutation.isPending ? styles.spinner : ''} />
+                {batchGenerateMutation.isPending ? 'Queuing...' : 'Generate'}
               </button>
               
               {/* Status dropdown */}
@@ -557,10 +671,12 @@ export function Library() {
       {/* Detail Panel */}
       {selectedIdea && (
         <IdeaDetail
-          idea={selectedIdea}
+          idea={data?.ideas?.find((i: Idea) => i.id === selectedIdea.id) || selectedIdea}
           onClose={() => setSelectedIdea(null)}
           onStatusChange={handleStatusChange}
           onDelete={() => handleDelete(selectedIdea.id)}
+          onGenerate={() => handleGenerate(selectedIdea.id)}
+          onVersionChange={(attemptId) => setVersionMutation.mutate({ ideaId: selectedIdea.id, attemptId })}
         />
       )}
     </div>
