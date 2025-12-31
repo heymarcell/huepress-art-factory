@@ -1,19 +1,17 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import {
+  Search,
+  Plus,
+  RefreshCw,
+  AlertCircle,
+  Grid,
+  List,
+} from 'lucide-react';
 import type { Idea, IdeaStatus } from '../../shared/schemas';
 import { IdeaDetail } from '../components/IdeaDetail';
 import styles from './Library.module.css';
-
-const STATUS_COLORS: Record<IdeaStatus, string> = {
-  Imported: 'info',
-  Queued: 'warning',
-  Generating: 'warning',
-  Generated: 'success',
-  NeedsAttention: 'error',
-  Approved: 'accent',
-  Exported: 'muted',
-};
 
 const STATUS_OPTIONS: IdeaStatus[] = [
   'Imported',
@@ -86,21 +84,22 @@ export function Library() {
 
   return (
     <div className={styles.library}>
+      {/* Header */}
       <header className={styles.header}>
         <div>
           <h1 className={styles.title}>Library</h1>
-          <p className={styles.subtitle}>
-            {total} ideas in your collection
-          </p>
+          <p className={styles.subtitle}>{total} ideas in collection</p>
         </div>
-        <Link to="/import" className={styles.importButton}>
-          + Import Ideas
+        <Link to="/import" className={styles.btnPrimary}>
+          <Plus size={14} />
+          Import
         </Link>
       </header>
 
-      {/* Filters */}
-      <div className={styles.filters}>
+      {/* Toolbar */}
+      <div className={styles.toolbar}>
         <div className={styles.searchWrapper}>
+          <Search size={14} className={styles.searchIcon} />
           <input
             type="text"
             placeholder="Search ideas..."
@@ -111,6 +110,7 @@ export function Library() {
             className={styles.searchInput}
           />
         </div>
+        <div className={styles.toolbarDivider} />
         <div className={styles.statusFilters}>
           {STATUS_OPTIONS.map((status) => (
             <button
@@ -123,59 +123,62 @@ export function Library() {
               {status}
             </button>
           ))}
-          {filters.status.length > 0 && (
-            <button
-              onClick={() => setFilters((prev) => ({ ...prev, status: [] }))}
-              className={styles.clearFilters}
-            >
-              Clear filters
-            </button>
-          )}
         </div>
+        {filters.status.length > 0 && (
+          <button
+            onClick={() => setFilters((prev) => ({ ...prev, status: [] }))}
+            className={styles.clearBtn}
+          >
+            Clear
+          </button>
+        )}
       </div>
 
       {/* Content */}
-      {isLoading && (
-        <div className={styles.loading}>
-          <div className={styles.spinner} />
-          <span>Loading ideas...</span>
-        </div>
-      )}
+      <div className={styles.content}>
+        {isLoading && (
+          <div className={styles.loading}>
+            <RefreshCw size={20} className={styles.spinner} />
+            <span>Loading ideas...</span>
+          </div>
+        )}
 
-      {isError && (
-        <div className={styles.error}>
-          <p>Failed to load ideas: {(error as Error)?.message || 'Unknown error'}</p>
-          <button
-            onClick={() => queryClient.invalidateQueries({ queryKey: ['ideas'] })}
-            className={styles.retryButton}
-          >
-            Retry
-          </button>
-        </div>
-      )}
+        {isError && (
+          <div className={styles.error}>
+            <AlertCircle size={20} />
+            <p>Failed to load ideas: {(error as Error)?.message || 'Unknown error'}</p>
+            <button
+              onClick={() => queryClient.invalidateQueries({ queryKey: ['ideas'] })}
+              className={styles.retryBtn}
+            >
+              Retry
+            </button>
+          </div>
+        )}
 
-      {!isLoading && !isError && ideas.length === 0 && (
-        <div className={styles.empty}>
-          <div className={styles.emptyIcon}>📚</div>
-          <h3>No ideas yet</h3>
-          <p>Import your first JSON array to get started</p>
-          <Link to="/import" className={styles.emptyButton}>
-            Import Ideas
-          </Link>
-        </div>
-      )}
+        {!isLoading && !isError && ideas.length === 0 && (
+          <div className={styles.empty}>
+            <Grid size={32} className={styles.emptyIcon} />
+            <h3>No ideas found</h3>
+            <p>Import your first JSON array to get started</p>
+            <Link to="/import" className={styles.emptyBtn}>
+              Import Ideas
+            </Link>
+          </div>
+        )}
 
-      {!isLoading && !isError && ideas.length > 0 && (
-        <div className={styles.grid}>
-          {ideas.map((idea) => (
-            <IdeaCard
-              key={idea.id}
-              idea={idea}
-              onClick={() => setSelectedIdea(idea)}
-            />
-          ))}
-        </div>
-      )}
+        {!isLoading && !isError && ideas.length > 0 && (
+          <div className={styles.grid}>
+            {ideas.map((idea) => (
+              <IdeaCard
+                key={idea.id}
+                idea={idea}
+                onClick={() => setSelectedIdea(idea)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Detail Panel */}
       {selectedIdea && (
@@ -190,14 +193,10 @@ export function Library() {
 }
 
 function IdeaCard({ idea, onClick }: { idea: Idea; onClick: () => void }) {
-  const statusColor = STATUS_COLORS[idea.status];
-
   return (
     <div className={styles.card} onClick={onClick}>
       <div className={styles.cardHeader}>
-        <span
-          className={`${styles.statusBadge} ${styles[`status${statusColor}`]}`}
-        >
+        <span className={`${styles.statusBadge} ${styles[`status${idea.status}`]}`}>
           {idea.status}
         </span>
         <span className={styles.skillBadge}>{idea.skill}</span>
@@ -206,18 +205,6 @@ function IdeaCard({ idea, onClick }: { idea: Idea; onClick: () => void }) {
       <p className={styles.cardDescription}>{idea.description}</p>
       <div className={styles.cardMeta}>
         <span className={styles.category}>{idea.category}</span>
-        {idea.tags && idea.tags.length > 0 && (
-          <div className={styles.tags}>
-            {idea.tags.slice(0, 3).map((tag) => (
-              <span key={tag} className={styles.tag}>
-                {tag}
-              </span>
-            ))}
-            {idea.tags.length > 3 && (
-              <span className={styles.tagMore}>+{idea.tags.length - 3}</span>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

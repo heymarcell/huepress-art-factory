@@ -1,3 +1,4 @@
+import { X, Palette, Check, Tag, Lightbulb, Heart, FileText } from 'lucide-react';
 import type { Idea } from '../../shared/schemas';
 import styles from './IdeaDetail.module.css';
 
@@ -29,7 +30,7 @@ export function IdeaDetail({ idea, onClose, onStatusChange }: IdeaDetailProps) {
         <header className={styles.header}>
           <h2 className={styles.title}>{idea.title}</h2>
           <button className={styles.closeButton} onClick={onClose}>
-            ✕
+            <X size={18} />
           </button>
         </header>
 
@@ -53,14 +54,20 @@ export function IdeaDetail({ idea, onClose, onStatusChange }: IdeaDetailProps) {
 
           {/* Description */}
           <section className={styles.section}>
-            <h3 className={styles.sectionTitle}>Description</h3>
+            <div className={styles.sectionHeader}>
+              <FileText size={14} />
+              <h3>Description</h3>
+            </div>
             <p className={styles.description}>{idea.description}</p>
           </section>
 
           {/* Extended Description */}
           {idea.extended_description && (
             <section className={styles.section}>
-              <h3 className={styles.sectionTitle}>Extended Description</h3>
+              <div className={styles.sectionHeader}>
+                <FileText size={14} />
+                <h3>Extended Description</h3>
+              </div>
               <p className={styles.text}>{idea.extended_description}</p>
             </section>
           )}
@@ -68,7 +75,10 @@ export function IdeaDetail({ idea, onClose, onStatusChange }: IdeaDetailProps) {
           {/* Tags */}
           {idea.tags && idea.tags.length > 0 && (
             <section className={styles.section}>
-              <h3 className={styles.sectionTitle}>Tags</h3>
+              <div className={styles.sectionHeader}>
+                <Tag size={14} />
+                <h3>Tags</h3>
+              </div>
               <div className={styles.tags}>
                 {idea.tags.map((tag) => (
                   <span key={tag} className={styles.tag}>
@@ -82,7 +92,10 @@ export function IdeaDetail({ idea, onClose, onStatusChange }: IdeaDetailProps) {
           {/* Fun Facts */}
           {idea.fun_facts && idea.fun_facts.length > 0 && (
             <section className={styles.section}>
-              <h3 className={styles.sectionTitle}>Fun Facts</h3>
+              <div className={styles.sectionHeader}>
+                <Lightbulb size={14} />
+                <h3>Fun Facts</h3>
+              </div>
               <ul className={styles.list}>
                 {idea.fun_facts.map((fact, i) => (
                   <li key={i}>{fact}</li>
@@ -94,7 +107,10 @@ export function IdeaDetail({ idea, onClose, onStatusChange }: IdeaDetailProps) {
           {/* Coloring Tips */}
           {idea.coloring_tips && idea.coloring_tips.length > 0 && (
             <section className={styles.section}>
-              <h3 className={styles.sectionTitle}>Coloring Tips</h3>
+              <div className={styles.sectionHeader}>
+                <Palette size={14} />
+                <h3>Coloring Tips</h3>
+              </div>
               <ul className={styles.list}>
                 {idea.coloring_tips.map((tip, i) => (
                   <li key={i}>{tip}</li>
@@ -103,22 +119,13 @@ export function IdeaDetail({ idea, onClose, onStatusChange }: IdeaDetailProps) {
             </section>
           )}
 
-          {/* Suggested Activities */}
-          {idea.suggested_activities && idea.suggested_activities.length > 0 && (
-            <section className={styles.section}>
-              <h3 className={styles.sectionTitle}>Suggested Activities</h3>
-              <ul className={styles.list}>
-                {idea.suggested_activities.map((activity, i) => (
-                  <li key={i}>{activity}</li>
-                ))}
-              </ul>
-            </section>
-          )}
-
           {/* Therapeutic Benefits */}
           {idea.therapeutic_benefits && idea.therapeutic_benefits.length > 0 && (
             <section className={styles.section}>
-              <h3 className={styles.sectionTitle}>Therapeutic Benefits</h3>
+              <div className={styles.sectionHeader}>
+                <Heart size={14} />
+                <h3>Therapeutic Benefits</h3>
+              </div>
               <ul className={styles.list}>
                 {idea.therapeutic_benefits.map((benefit, i) => (
                   <li key={i}>{benefit}</li>
@@ -127,23 +134,11 @@ export function IdeaDetail({ idea, onClose, onStatusChange }: IdeaDetailProps) {
             </section>
           )}
 
-          {/* Meta Keywords */}
-          {idea.meta_keywords && idea.meta_keywords.length > 0 && (
-            <section className={styles.section}>
-              <h3 className={styles.sectionTitle}>Meta Keywords</h3>
-              <div className={styles.keywords}>
-                {idea.meta_keywords.map((keyword) => (
-                  <span key={keyword} className={styles.keyword}>
-                    {keyword}
-                  </span>
-                ))}
-              </div>
-            </section>
-          )}
-
           {/* Metadata */}
           <section className={styles.section}>
-            <h3 className={styles.sectionTitle}>Metadata</h3>
+            <div className={styles.sectionHeader}>
+              <h3>Metadata</h3>
+            </div>
             <div className={styles.metadata}>
               <div className={styles.metaItem}>
                 <span className={styles.metaLabel}>ID</span>
@@ -171,15 +166,17 @@ export function IdeaDetail({ idea, onClose, onStatusChange }: IdeaDetailProps) {
 
         {/* Actions */}
         <footer className={styles.footer}>
-          <button className={styles.actionButton} disabled title="Available in M2">
-            🎨 Generate Image
+          <button className={styles.actionButton} disabled title="Coming in M2">
+            <Palette size={14} />
+            Generate Image
           </button>
           <button
             className={`${styles.actionButton} ${styles.approveButton}`}
             onClick={() => handleStatusChange('Approved')}
             disabled={idea.status === 'Approved'}
           >
-            ✓ Approve
+            <Check size={14} />
+            Approve
           </button>
         </footer>
       </div>

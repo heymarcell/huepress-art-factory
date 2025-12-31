@@ -1,115 +1,129 @@
+/* =============================================================================
+   Layout - Industrial Adobe-style Panel Layout
+   ============================================================================= */
+
 .layout {
   display: flex;
-  min-height: 100vh;
-  width: 100%;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background-color: var(--color-bg-primary);
 }
 
-/* Sidebar */
+/* -----------------------------------------------------------------------------
+   Sidebar - Tool Panel Style
+   ----------------------------------------------------------------------------- */
 .sidebar {
-  width: var(--sidebar-width);
-  background-color: var(--color-bg-secondary);
-  border-right: 1px solid var(--color-border-subtle);
+  width: 200px;
+  min-width: 200px;
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
+  background-color: var(--color-bg-secondary);
+  border-right: 1px solid var(--color-border);
 }
 
+/* Logo */
 .logo {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-5);
-  border-bottom: 1px solid var(--color-border-subtle);
+  padding: var(--space-4) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .logoIcon {
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, var(--color-accent), #c084fc);
-  border-radius: var(--radius-lg);
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 32px;
+  height: 32px;
+  background-color: var(--color-accent);
+  border-radius: var(--radius-sm);
   color: white;
-  flex-shrink: 0;
 }
 
 .logoText {
   display: flex;
   flex-direction: column;
+  line-height: 1.1;
 }
 
 .logoTitle {
-  font-weight: 700;
-  font-size: var(--text-lg);
+  font-size: var(--text-sm);
+  font-weight: 600;
   color: var(--color-text-primary);
-  line-height: var(--leading-tight);
+  letter-spacing: -0.2px;
 }
 
 .logoSubtitle {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.5px;
 }
 
 /* Navigation */
 .nav {
   flex: 1;
-  padding: var(--space-4);
   display: flex;
   flex-direction: column;
+  padding: var(--space-3);
   gap: var(--space-1);
 }
 
-.navLink {
+.navItem {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   color: var(--color-text-secondary);
   font-size: var(--text-sm);
-  font-weight: 500;
+  font-weight: 400;
   transition: all var(--transition-fast);
+  text-decoration: none;
 }
 
-.navLink:hover {
+.navItem:hover {
   background-color: var(--color-bg-tertiary);
   color: var(--color-text-primary);
 }
 
-.navLinkActive {
+.navItemActive {
   background-color: var(--color-accent-subtle);
   color: var(--color-accent);
 }
 
-.navLinkActive:hover {
+.navItemActive:hover {
   background-color: var(--color-accent-subtle);
   color: var(--color-accent);
 }
 
-/* Sidebar Footer */
+/* Footer */
 .sidebarFooter {
-  padding: var(--space-4);
-  border-top: 1px solid var(--color-border-subtle);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border);
 }
 
 .version {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
-  text-align: center;
+  font-family: var(--font-mono);
 }
 
-/* Main Content */
+/* -----------------------------------------------------------------------------
+   Main Content Area
+   ----------------------------------------------------------------------------- */
 .main {
   flex: 1;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background-color: var(--color-bg-primary);
 }
 
 .content {
-  padding: var(--space-8);
-  max-width: 1600px;
-  margin: 0 auto;
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-6);
 }

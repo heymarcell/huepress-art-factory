@@ -1,5 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import {
+  AlertTriangle,
+  Download,
+  Upload,
+  Library,
+  Paintbrush,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  FileCheck,
+  Package,
+} from 'lucide-react';
 import styles from './Dashboard.module.css';
 
 export function Dashboard() {
@@ -23,35 +35,31 @@ export function Dashboard() {
   const byStatus = stats?.byStatus || {};
 
   const statusCards = [
-    { label: 'Imported', value: byStatus.Imported || 0, color: 'info' },
-    { label: 'Queued', value: byStatus.Queued || 0, color: 'warning' },
-    { label: 'Generated', value: byStatus.Generated || 0, color: 'success' },
-    { label: 'Needs Attention', value: byStatus.NeedsAttention || 0, color: 'error' },
-    { label: 'Approved', value: byStatus.Approved || 0, color: 'accent' },
-    { label: 'Exported', value: byStatus.Exported || 0, color: 'muted' },
+    { label: 'Imported', value: byStatus.Imported || 0, icon: Download, color: 'info' },
+    { label: 'Queued', value: byStatus.Queued || 0, icon: Clock, color: 'warning' },
+    { label: 'Generated', value: byStatus.Generated || 0, icon: CheckCircle, color: 'success' },
+    { label: 'Needs Review', value: byStatus.NeedsAttention || 0, icon: AlertCircle, color: 'error' },
+    { label: 'Approved', value: byStatus.Approved || 0, icon: FileCheck, color: 'accent' },
+    { label: 'Exported', value: byStatus.Exported || 0, icon: Package, color: 'muted' },
   ];
 
   return (
     <div className={styles.dashboard}>
       <header className={styles.header}>
-        <div>
-          <h1 className={styles.title}>Dashboard</h1>
-          <p className={styles.subtitle}>
-            Overview of your coloring page production pipeline
-          </p>
-        </div>
+        <h1 className={styles.title}>Dashboard</h1>
+        <p className={styles.subtitle}>Production pipeline overview</p>
       </header>
 
-      {/* Setup Check */}
+      {/* Setup Alert */}
       {!apiKeyStatus?.hasApiKey && (
         <div className={styles.alert}>
-          <div className={styles.alertIcon}>⚠️</div>
+          <AlertTriangle size={18} />
           <div className={styles.alertContent}>
             <strong>API Key Required</strong>
-            <p>Configure your Gemini API key in Settings to enable image generation.</p>
+            <span>Configure your Gemini API key to enable generation</span>
           </div>
           <Link to="/settings" className={styles.alertAction}>
-            Go to Settings →
+            Configure
           </Link>
         </div>
       )}
@@ -60,10 +68,15 @@ export function Dashboard() {
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Pipeline Status</h2>
         <div className={styles.statsGrid}>
-          {statusCards.map(({ label, value, color }) => (
+          {statusCards.map(({ label, value, icon: Icon, color }) => (
             <div key={label} className={`${styles.statCard} ${styles[`stat${color}`]}`}>
-              <div className={styles.statValue}>{isLoading ? '—' : value}</div>
-              <div className={styles.statLabel}>{label}</div>
+              <div className={styles.statIcon}>
+                <Icon size={18} strokeWidth={1.5} />
+              </div>
+              <div className={styles.statInfo}>
+                <span className={styles.statValue}>{isLoading ? '—' : value}</span>
+                <span className={styles.statLabel}>{label}</span>
+              </div>
             </div>
           ))}
         </div>
@@ -74,31 +87,31 @@ export function Dashboard() {
         <h2 className={styles.sectionTitle}>Quick Actions</h2>
         <div className={styles.actionsGrid}>
           <Link to="/import" className={styles.actionCard}>
-            <div className={styles.actionIcon}>📥</div>
+            <Upload size={20} strokeWidth={1.5} />
             <div className={styles.actionContent}>
               <strong>Import Ideas</strong>
-              <span>Paste a JSON array of coloring page ideas</span>
+              <span>Load JSON array of ideas</span>
             </div>
           </Link>
           <Link to="/library" className={styles.actionCard}>
-            <div className={styles.actionIcon}>📚</div>
+            <Library size={20} strokeWidth={1.5} />
             <div className={styles.actionContent}>
               <strong>Browse Library</strong>
-              <span>View and manage all your ideas</span>
+              <span>View and manage ideas</span>
             </div>
           </Link>
           <button className={styles.actionCard} disabled>
-            <div className={styles.actionIcon}>🎨</div>
+            <Paintbrush size={20} strokeWidth={1.5} />
             <div className={styles.actionContent}>
-              <strong>Generate Images</strong>
-              <span>Start batch generation (M2)</span>
+              <strong>Generate</strong>
+              <span>Coming in M2</span>
             </div>
           </button>
           <button className={styles.actionCard} disabled>
-            <div className={styles.actionIcon}>📤</div>
+            <Download size={20} strokeWidth={1.5} />
             <div className={styles.actionContent}>
-              <strong>Export Assets</strong>
-              <span>Export approved images (M4)</span>
+              <strong>Export</strong>
+              <span>Coming in M4</span>
             </div>
           </button>
         </div>
@@ -107,7 +120,7 @@ export function Dashboard() {
       {/* Summary */}
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Summary</h2>
-        <div className={styles.summaryCard}>
+        <div className={styles.summaryGrid}>
           <div className={styles.summaryItem}>
             <span className={styles.summaryLabel}>Total Ideas</span>
             <span className={styles.summaryValue}>
@@ -115,21 +128,21 @@ export function Dashboard() {
             </span>
           </div>
           <div className={styles.summaryItem}>
-            <span className={styles.summaryLabel}>Total Batches</span>
+            <span className={styles.summaryLabel}>Batches</span>
             <span className={styles.summaryValue}>
               {isLoading ? '—' : stats?.totalBatches || 0}
             </span>
           </div>
           <div className={styles.summaryItem}>
             <span className={styles.summaryLabel}>Database</span>
-            <span className={styles.summaryValue} title={projectInfo?.databasePath}>
-              {projectInfo?.databasePath ? '✓ Connected' : '—'}
+            <span className={`${styles.summaryValue} ${styles.statusOk}`}>
+              Connected
             </span>
           </div>
           <div className={styles.summaryItem}>
             <span className={styles.summaryLabel}>API Key</span>
-            <span className={styles.summaryValue}>
-              {apiKeyStatus?.hasApiKey ? '✓ Configured' : '✗ Not set'}
+            <span className={`${styles.summaryValue} ${apiKeyStatus?.hasApiKey ? styles.statusOk : styles.statusError}`}>
+              {apiKeyStatus?.hasApiKey ? 'Configured' : 'Not Set'}
             </span>
           </div>
         </div>
