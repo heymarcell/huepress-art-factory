@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
@@ -14,6 +14,9 @@ import {
   LayoutGrid,
   List,
   ChevronDown,
+  ArrowUp,
+  ArrowDown,
+  Filter,
 } from 'lucide-react';
 import type { Idea, IdeaStatus } from '../../shared/schemas';
 import { IdeaDetail } from '../components/IdeaDetail';
@@ -28,20 +31,50 @@ const STATUS_OPTIONS: IdeaStatus[] = [
   'Exported',
 ];
 
+const SKILL_OPTIONS = ['Easy', 'Medium', 'Detailed'];
+
+type SortField = 'title' | 'category' | 'skill' | 'created_at' | 'status';
+type SortOrder = 'asc' | 'desc';
+
 export function Library() {
   const queryClient = useQueryClient();
   const [filters, setFilters] = useState<{
     status: IdeaStatus[];
+    category: string | null;
+    skill: string | null;
     search: string;
   }>({
     status: [],
+    category: null,
+    skill: null,
     search: '',
   });
+  const [sortField, setSortField] = useState<SortField>('created_at');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [selectedIdea, setSelectedIdea] = useState<Idea | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSelecting, setIsSelecting] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const [showSortMenu, setShowSortMenu] = useState(false);
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  
+  const sortMenuRef = useRef<HTMLDivElement>(null);
+  const filterMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close menus when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (sortMenuRef.current && !sortMenuRef.current.contains(e.target as Node)) {
+        setShowSortMenu(false);
+      }
+      if (filterMenuRef.current && !filterMenuRef.current.contains(e.target as Node)) {
+        setShowFilterMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['ideas', filters],
@@ -58,6 +91,44 @@ export function Library() {
       return result.data;
     },
   });
+
+  // Get unique categories from data
+  const categories: string[] = [...new Set((data?.ideas || []).map((i: Idea) => i.category))].sort() as string[];
+
+  // Client-side filtering and sorting
+  const filteredAndSortedIdeas = (() => {
+    let ideas = data?.ideas || [];
+    
+    // Apply category filter
+    if (filters.category) {
+      ideas = ideas.filter((i: Idea) => i.category === filters.category);
+    }
+    
+    // Apply skill filter
+    if (filters.skill) {
+      ideas = ideas.filter((i: Idea) => i.skill === filters.skill);
+    }
+    
+    // Sort
+    ideas = [...ideas].sort((a: Idea, b: Idea) => {
+      let aVal = a[sortField];
+      let bVal = b[sortField];
+      
+      // Handle null values
+      if (aVal === null) aVal = '';
+      if (bVal === null) bVal = '';
+      
+      // String comparison
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        const cmp = aVal.localeCompare(bVal);
+        return sortOrder === 'asc' ? cmp : -cmp;
+      }
+      
+      return 0;
+    });
+    
+    return ideas;
+  })();
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: IdeaStatus }) => {
@@ -125,13 +196,14 @@ export function Library() {
     },
   });
 
-  const toggleStatusFilter = (status: IdeaStatus) => {
-    setFilters((prev) => ({
-      ...prev,
-      status: prev.status.includes(status)
-        ? prev.status.filter((s) => s !== status)
-        : [...prev.status, status],
-    }));
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+    setShowSortMenu(false);
   };
 
   const handleStatusChange = (newStatus: IdeaStatus) => {
@@ -170,10 +242,10 @@ export function Library() {
   };
 
   const selectAll = () => {
-    if (ideas.length === selectedIds.size) {
+    if (filteredAndSortedIdeas.length === selectedIds.size) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(ideas.map((i: Idea) => i.id)));
+      setSelectedIds(new Set(filteredAndSortedIdeas.map((i: Idea) => i.id)));
     }
   };
 
@@ -183,7 +255,12 @@ export function Library() {
     setShowStatusMenu(false);
   };
 
-  const ideas = data?.ideas || [];
+  const clearFilters = () => {
+    setFilters({ status: [], category: null, skill: null, search: '' });
+    setShowFilterMenu(false);
+  };
+
+  const hasActiveFilters = filters.status.length > 0 || filters.category || filters.skill;
   const total = data?.total || 0;
 
   return (
@@ -192,7 +269,11 @@ export function Library() {
       <header className={styles.header}>
         <div>
           <h1 className={styles.title}>Library</h1>
-          <p className={styles.subtitle}>{total} ideas in collection</p>
+          <p className={styles.subtitle}>
+            {filteredAndSortedIdeas.length === total 
+              ? `${total} ideas` 
+              : `${filteredAndSortedIdeas.length} of ${total} ideas`}
+          </p>
         </div>
         <div className={styles.headerActions}>
           {!isSelecting ? (
@@ -216,7 +297,7 @@ export function Library() {
               <button
                 onClick={() => setIsSelecting(true)}
                 className={styles.btnSecondary}
-                disabled={ideas.length === 0}
+                disabled={filteredAndSortedIdeas.length === 0}
               >
                 <CheckSquare size={14} />
                 Select
@@ -232,7 +313,7 @@ export function Library() {
                 {selectedIds.size} selected
               </span>
               <button onClick={selectAll} className={styles.btnSecondary}>
-                {selectedIds.size === ideas.length ? 'Deselect All' : 'Select All'}
+                {selectedIds.size === filteredAndSortedIdeas.length ? 'Deselect All' : 'Select All'}
               </button>
               
               {/* Status dropdown */}
@@ -290,25 +371,122 @@ export function Library() {
             className={styles.searchInput}
           />
         </div>
+        
         <div className={styles.toolbarDivider} />
-        <div className={styles.statusFilters}>
-          {STATUS_OPTIONS.map((status) => (
-            <button
-              key={status}
-              onClick={() => toggleStatusFilter(status)}
-              className={`${styles.filterChip} ${
-                filters.status.includes(status) ? styles.filterChipActive : ''
-              }`}
-            >
-              {status}
-            </button>
-          ))}
-        </div>
-        {filters.status.length > 0 && (
+        
+        {/* Sort dropdown */}
+        <div className={styles.dropdown} ref={sortMenuRef}>
           <button
-            onClick={() => setFilters((prev) => ({ ...prev, status: [] }))}
-            className={styles.clearBtn}
+            onClick={() => setShowSortMenu(!showSortMenu)}
+            className={styles.toolbarBtn}
           >
+            {sortOrder === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+            {sortField === 'title' && 'Name'}
+            {sortField === 'category' && 'Category'}
+            {sortField === 'skill' && 'Skill'}
+            {sortField === 'created_at' && 'Date'}
+            {sortField === 'status' && 'Status'}
+            <ChevronDown size={12} />
+          </button>
+          {showSortMenu && (
+            <div className={styles.dropdownMenu}>
+              <div className={styles.dropdownHeader}>Sort by</div>
+              {[
+                { field: 'title' as SortField, label: 'Name' },
+                { field: 'category' as SortField, label: 'Category' },
+                { field: 'skill' as SortField, label: 'Skill' },
+                { field: 'created_at' as SortField, label: 'Date Added' },
+                { field: 'status' as SortField, label: 'Status' },
+              ].map(({ field, label }) => (
+                <button
+                  key={field}
+                  onClick={() => handleSort(field)}
+                  className={`${styles.dropdownItem} ${sortField === field ? styles.dropdownItemActive : ''}`}
+                >
+                  {label}
+                  {sortField === field && (
+                    sortOrder === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Filter dropdown */}
+        <div className={styles.dropdown} ref={filterMenuRef}>
+          <button
+            onClick={() => setShowFilterMenu(!showFilterMenu)}
+            className={`${styles.toolbarBtn} ${hasActiveFilters ? styles.toolbarBtnActive : ''}`}
+          >
+            <Filter size={14} />
+            Filters
+            {hasActiveFilters && <span className={styles.filterBadge}>{
+              (filters.status.length > 0 ? 1 : 0) + (filters.category ? 1 : 0) + (filters.skill ? 1 : 0)
+            }</span>}
+            <ChevronDown size={12} />
+          </button>
+          {showFilterMenu && (
+            <div className={`${styles.dropdownMenu} ${styles.filterMenu}`}>
+              <div className={styles.filterSection}>
+                <div className={styles.dropdownHeader}>Status</div>
+                <div className={styles.filterChips}>
+                  {STATUS_OPTIONS.map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => setFilters(prev => ({
+                        ...prev,
+                        status: prev.status.includes(status)
+                          ? prev.status.filter(s => s !== status)
+                          : [...prev.status, status]
+                      }))}
+                      className={`${styles.filterChip} ${filters.status.includes(status) ? styles.filterChipActive : ''}`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div className={styles.filterSection}>
+                <div className={styles.dropdownHeader}>Category</div>
+                <select
+                  value={filters.category || ''}
+                  onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value || null }))}
+                  className={styles.filterSelect}
+                >
+                  <option value="">All categories</option>
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className={styles.filterSection}>
+                <div className={styles.dropdownHeader}>Skill Level</div>
+                <select
+                  value={filters.skill || ''}
+                  onChange={(e) => setFilters(prev => ({ ...prev, skill: e.target.value || null }))}
+                  className={styles.filterSelect}
+                >
+                  <option value="">All skills</option>
+                  {SKILL_OPTIONS.map((skill) => (
+                    <option key={skill} value={skill}>{skill}</option>
+                  ))}
+                </select>
+              </div>
+              
+              {hasActiveFilters && (
+                <button onClick={clearFilters} className={styles.clearFiltersBtn}>
+                  Clear all filters
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {hasActiveFilters && (
+          <button onClick={clearFilters} className={styles.clearBtn}>
             Clear
           </button>
         )}
@@ -336,20 +514,32 @@ export function Library() {
           </div>
         )}
 
-        {!isLoading && !isError && ideas.length === 0 && (
+        {!isLoading && !isError && filteredAndSortedIdeas.length === 0 && (
           <div className={styles.empty}>
             <Grid size={32} className={styles.emptyIcon} />
-            <h3>No ideas found</h3>
-            <p>Import your first JSON array to get started</p>
-            <Link to="/import" className={styles.emptyBtn}>
-              Import Ideas
-            </Link>
+            {hasActiveFilters ? (
+              <>
+                <h3>No matching ideas</h3>
+                <p>Try adjusting your filters</p>
+                <button onClick={clearFilters} className={styles.emptyBtn}>
+                  Clear Filters
+                </button>
+              </>
+            ) : (
+              <>
+                <h3>No ideas found</h3>
+                <p>Import your first JSON array to get started</p>
+                <Link to="/import" className={styles.emptyBtn}>
+                  Import Ideas
+                </Link>
+              </>
+            )}
           </div>
         )}
 
-        {!isLoading && !isError && ideas.length > 0 && (
+        {!isLoading && !isError && filteredAndSortedIdeas.length > 0 && (
           <div className={viewMode === 'grid' ? styles.grid : styles.listView}>
-            {ideas.map((idea: Idea) => (
+            {filteredAndSortedIdeas.map((idea: Idea) => (
               <IdeaCard
                 key={idea.id}
                 idea={idea}
