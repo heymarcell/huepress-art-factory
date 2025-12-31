@@ -150,6 +150,13 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
     </>
   );
 
+  const [resolution, setResolution] = useState<{w: number, h: number} | null>(null);
+
+  useEffect(() => {
+    // Reset resolution when image changes
+    setResolution(null);
+  }, [idea.image_path, idea.selected_attempt_id]);
+
   return (
     <>
       <div className={styles.overlay} onClick={onClose}>
@@ -187,7 +194,22 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
               <div className={styles.imageWrapper} onClick={() => idea.image_path && setShowLightbox(true)}>
                 {idea.image_path ? (
                   <>
-                    <img src={`asset://${idea.image_path}`} alt={idea.title} className={styles.image} />
+                    <img 
+                      src={`asset://${idea.image_path}`} 
+                      alt={idea.title} 
+                      className={styles.image} 
+                      onLoad={(e) => {
+                        setResolution({
+                          w: e.currentTarget.naturalWidth,
+                          h: e.currentTarget.naturalHeight
+                        });
+                      }}
+                    />
+                    {resolution && (
+                      <div className={styles.resolutionBadge}>
+                         {resolution.w} x {resolution.h}
+                      </div>
+                    )}
                     {isGenerating && (
                       <div className={styles.overlayProgress}>
                         {renderProgress()}
