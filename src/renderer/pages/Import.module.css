@@ -166,13 +166,15 @@
 /* Actions */
 .actions {
   display: flex;
-  gap: var(--space-3);
+  gap: var(--space-4);
   margin-bottom: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border-subtle);
 }
 
 .btnSecondary,
 .btnPrimary {
-  padding: var(--space-3) var(--space-5);
+  padding: var(--space-3) var(--space-6);
   border-radius: var(--radius-sm);
   font-weight: 500;
   font-size: var(--text-sm);

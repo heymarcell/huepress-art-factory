@@ -7,7 +7,6 @@ import {
   RefreshCw,
   AlertCircle,
   Grid,
-  List,
 } from 'lucide-react';
 import type { Idea, IdeaStatus } from '../../shared/schemas';
 import { IdeaDetail } from '../components/IdeaDetail';

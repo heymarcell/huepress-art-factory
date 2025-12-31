@@ -15,7 +15,7 @@ export function Settings() {
   const queryClient = useQueryClient();
   const [apiKey, setApiKey] = useState('');
 
-  const { data: settings, isLoading: settingsLoading } = useQuery({
+  const { data: settings } = useQuery({
     queryKey: ['settings'],
     queryFn: async () => {
       const result = await window.huepress.settings.get();
