@@ -392,8 +392,8 @@ export function registerIdeasHandlers(): void {
       
       const db = getDatabase();
       const result = db.prepare(`
-        UPDATE ideas SET selected_attempt_id = ?, updated_at = ? WHERE id = ?
-      `).run(attemptId, new Date().toISOString(), ideaId);
+        UPDATE ideas SET selected_attempt_id = ? WHERE id = ?
+      `).run(attemptId, ideaId);
 
       if (result.changes === 0) {
         return errorResponse('Idea not found', 'NOT_FOUND');
