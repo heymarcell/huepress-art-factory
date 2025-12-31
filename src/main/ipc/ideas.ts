@@ -94,6 +94,51 @@ function rowToIdea(row: Record<string, unknown>): Idea {
 }
 
 // =============================================================================
+// Input Normalization - Handle various input formats
+// =============================================================================
+
+/**
+ * Parse a value that might be a comma-separated string into an array
+ */
+function toStringArray(value: unknown): string[] | undefined {
+  if (value === undefined || value === null) return undefined;
+  if (Array.isArray(value)) return value.map(String);
+  if (typeof value === 'string' && value.trim()) {
+    // Handle newline-separated (for fun_facts, etc.) or comma-separated
+    if (value.includes('\n')) {
+      return value.split('\n').map(s => s.trim()).filter(Boolean);
+    }
+    return value.split(',').map(s => s.trim()).filter(Boolean);
+  }
+  return undefined;
+}
+
+/**
+ * Normalize input from various formats (camelCase, comma-strings) to schema format
+ */
+function normalizeIdeaInput(raw: Record<string, unknown>): Record<string, unknown> {
+  // Normalize skill: Hard → Detailed
+  let skill = raw.skill as string;
+  if (skill === 'Hard') {
+    skill = 'Detailed';
+  }
+  
+  return {
+    title: raw.title,
+    description: raw.description,
+    category: raw.category,
+    skill,
+    tags: toStringArray(raw.tags),
+    extended_description: raw.extendedDescription ?? raw.extended_description,
+    fun_facts: toStringArray(raw.funFacts ?? raw.fun_facts),
+    suggested_activities: toStringArray(raw.suggestedActivities ?? raw.suggested_activities),
+    coloring_tips: toStringArray(raw.coloringTips ?? raw.coloring_tips),
+    therapeutic_benefits: toStringArray(raw.therapeuticBenefits ?? raw.therapeutic_benefits),
+    meta_keywords: toStringArray(raw.metaKeywords ?? raw.meta_keywords),
+  };
+}
+
+// =============================================================================
 // Handlers
 // =============================================================================
 
@@ -114,8 +159,14 @@ export function registerIdeasHandlers(): void {
         return errorResponse('Invalid JSON format');
       }
 
+      // Normalize input array (handle camelCase and comma-separated strings)
+      if (!Array.isArray(parsed)) {
+        return errorResponse('Input must be an array');
+      }
+      const normalizedInput = parsed.map((item: Record<string, unknown>) => normalizeIdeaInput(item));
+
       // Validate against schema
-      const validation = IdeaArraySchema.safeParse(parsed);
+      const validation = IdeaArraySchema.safeParse(normalizedInput);
       if (!validation.success) {
         const errors = validation.error.issues.map((issue) => ({
           path: issue.path.join('.'),

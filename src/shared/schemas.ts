@@ -14,7 +14,7 @@ export const IdeaInputSchema = z.object({
     .string()
     .min(1, "Category is required")
     .max(100, "Category too long"),
-  skill: z.enum(["Easy", "Medium", "Detailed", "Hard"]), // 'Hard' maps to 'Detailed' density
+  skill: z.enum(["Easy", "Medium", "Detailed"]), // 'Hard' is normalized to 'Detailed' on import
   tags: z.array(z.string().max(50)).optional(),
   extended_description: z.string().max(5000).optional(),
   fun_facts: z.array(z.string().max(500)).optional(),

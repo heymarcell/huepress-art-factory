@@ -78,7 +78,7 @@ export function Import() {
         if (item.skill && !['Easy', 'Medium', 'Detailed', 'Hard'].includes(item.skill)) {
           errors.push({
             path: `[${index}].skill`,
-            message: `Must be Easy, Medium, Detailed, or Hard`,
+            message: `Must be Easy, Medium, or Detailed`,
           });
         }
       });
