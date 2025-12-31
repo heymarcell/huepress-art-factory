@@ -279,7 +279,10 @@ export function Library() {
   const handleStatusChange = (newStatus: IdeaStatus) => {
     if (selectedIdea) {
       updateStatusMutation.mutate({ id: selectedIdea.id, status: newStatus });
-      setSelectedIdea({ ...selectedIdea, status: newStatus });
+      // Note: We do NOT optimistically update selectedIdea here.
+      // The query refetch will provide fresh data including the correct selected_attempt_id.
+      // Optimistic updates would use a stale selectedIdea captured on modal open,
+      // causing the version to jump incorrectly after changing versions.
     }
   };
 
