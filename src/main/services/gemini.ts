@@ -100,10 +100,98 @@ export class GeminiService {
       
       throw new Error('No image generated in response stream. Model may have returned text instead.');
 
-    } catch (e: any) {
+    } catch (e: unknown) {
       // Detailed error logging
-      const msg = e.response?.promptFeedback?.blockReason || e.message || JSON.stringify(e);
+      const err = e as { response?: { promptFeedback?: { blockReason?: string } }; message?: string };
+      const msg = err.response?.promptFeedback?.blockReason || err.message || JSON.stringify(e);
       throw new Error(`Gemini Generation Failed: ${msg}`);
     }
+  }
+
+  /**
+   * Submit a batch job to Gemini Batch API
+   * Returns the batch job name for polling
+   */
+  async submitBatchJob(
+    requests: { ideaId: string; prompt: string; skill: string }[]
+  ): Promise<string> {
+    // Build InlinedRequest array per SDK spec
+    const inlinedRequests = requests.map((req) => {
+      const systemInstruction = getSystemInstruction(req.skill);
+      return {
+        model: 'gemini-3-pro-image',
+        contents: [{ role: 'user', parts: [{ text: req.prompt }] }],
+        metadata: { ideaId: req.ideaId },
+        config: {
+          responseModalities: ['IMAGE' as const],
+          systemInstruction: systemInstruction.parts,
+        },
+      };
+    });
+    
+    // Submit to Batch API with inline requests
+    const response = await this.client.batches.create({
+      model: 'gemini-3-pro-image',
+      src: inlinedRequests,
+    });
+    
+    if (!response.name) {
+      throw new Error('Batch job creation failed - no name returned');
+    }
+    
+    return response.name;
+  }
+
+  /**
+   * Poll batch job status
+   */
+  async pollBatchJob(batchJobName: string): Promise<{
+    state: string;
+    completedCount?: number;
+    failedCount?: number;
+    incompleteCount?: number;
+    error?: string;
+  }> {
+    const job = await this.client.batches.get({ name: batchJobName });
+    
+    const parseCount = (str?: string): number | undefined => {
+      if (!str) return undefined;
+      const n = parseInt(str, 10);
+      return isNaN(n) ? undefined : n;
+    };
+    
+    return {
+      state: job.state || 'JOB_STATE_UNSPECIFIED',
+      completedCount: parseCount(job.completionStats?.successfulCount),
+      failedCount: parseCount(job.completionStats?.failedCount),
+      incompleteCount: parseCount(job.completionStats?.incompleteCount),
+      error: job.error?.message,
+    };
+  }
+
+  /**
+   * Get batch results from completed inline job
+   * The SDK returns inlinedResponses for inline batch jobs
+   */
+  async getBatchResults(batchJobName: string): Promise<{
+    ideaId: string;
+    imageData?: string;
+    error?: string;
+  }[]> {
+    const job = await this.client.batches.get({ name: batchJobName });
+    
+    // For inline requests, results come in inlinedResponses
+    const responses = job.dest?.inlinedResponses || [];
+    
+    // Cast responses to access metadata - SDK types may not include it
+    return responses.map((resp) => {
+      // Access metadata via custom_id or request metadata
+      const respAny = resp as { metadata?: Record<string, string>; response?: { candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { data?: string } }> } }> }; error?: { message?: string } };
+      const ideaId = respAny.metadata?.ideaId || '';
+      const imageData = respAny.response?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      const error = respAny.error?.message;
+      
+      return { ideaId, imageData, error };
+    });
   }
 }

@@ -28,6 +28,12 @@ export const IPC_CHANNELS = {
   JOBS_PROGRESS: 'jobs:progress', // Event channel
   JOBS_STOP_ALL: 'jobs:stop-all', // Panic button
 
+  // Batch Jobs (slow mode)
+  BATCH_SUBMIT: 'batch:submit',
+  BATCH_GET_STATUS: 'batch:get-status',
+  BATCH_LIST: 'batch:list',
+  BATCH_POLL: 'batch:poll',
+
   // Generation
   GEN_REGENERATE: 'gen:regenerate',
   GEN_MODIFY: 'gen:modify',

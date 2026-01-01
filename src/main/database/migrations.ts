@@ -165,6 +165,23 @@ Requirements:
       ALTER TABLE ideas ADD COLUMN ignore_duplicates INTEGER DEFAULT 0;
     `,
   },
+  {
+    version: 7,
+    name: 'add_batch_jobs',
+    up: `
+      CREATE TABLE IF NOT EXISTS batch_jobs (
+        id TEXT PRIMARY KEY,
+        gemini_job_id TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        idea_ids TEXT NOT NULL,
+        mode TEXT NOT NULL DEFAULT 'generate',
+        created_at TEXT NOT NULL,
+        completed_at TEXT,
+        error TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_batch_jobs_status ON batch_jobs(status);
+    `,
+  },
 ];
 
 /**

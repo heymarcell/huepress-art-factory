@@ -215,6 +215,57 @@ const huepressApi = {
   },
 
   // =========================================================================
+  // Batch Jobs (Slow Mode Generation)
+  // =========================================================================
+  batch: {
+    /**
+     * Submit ideas to batch generation (50% cheaper, up to 24h turnaround)
+     */
+    submit: (ideaIds: string[]): Promise<IpcResponse<{
+      batchJobId: string;
+      geminiJobId: string;
+      ideaCount: number;
+    }>> => ipcRenderer.invoke(IPC_CHANNELS.BATCH_SUBMIT, ideaIds),
+
+    /**
+     * Get status of a batch job
+     */
+    getStatus: (batchJobId: string): Promise<IpcResponse<{
+      id: string;
+      gemini_job_id: string | null;
+      status: string;
+      idea_ids: string;
+      created_at: string;
+      completed_at: string | null;
+      error: string | null;
+      geminiStatus?: {
+        state: string;
+        completedCount?: number;
+        failedCount?: number;
+      };
+    }>> => ipcRenderer.invoke(IPC_CHANNELS.BATCH_GET_STATUS, batchJobId),
+
+    /**
+     * List all batch jobs
+     */
+    list: (): Promise<IpcResponse<Array<{
+      id: string;
+      gemini_job_id: string | null;
+      status: string;
+      idea_ids: string;
+      created_at: string;
+      completed_at: string | null;
+      error: string | null;
+    }>>> => ipcRenderer.invoke(IPC_CHANNELS.BATCH_LIST),
+
+    /**
+     * Manually trigger batch polling
+     */
+    poll: (): Promise<IpcResponse<{ polled: boolean }>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.BATCH_POLL),
+  },
+
+  // =========================================================================
   // App
   // =========================================================================
   app: {

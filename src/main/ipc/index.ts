@@ -6,6 +6,7 @@ import { registerSettingsHandlers } from './settings';
 import { registerBatchesHandlers } from './batches';
 import { registerJobsHandlers } from './jobs';
 import { registerExportHandlers } from './export';
+import { registerBatchHandlers } from './batch';
 
 /**
  * Register all IPC handlers
@@ -20,6 +21,7 @@ export function registerIpcHandlers(): void {
   registerBatchesHandlers();
   registerJobsHandlers();
   registerExportHandlers();
+  registerBatchHandlers();
 
   // App-level handlers
   registerAppHandlers();

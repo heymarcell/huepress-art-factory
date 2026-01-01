@@ -5,6 +5,7 @@ import log from 'electron-log/main';
 import { initializeDatabase } from './database';
 import { registerIpcHandlers } from './ipc';
 import { setupSecurity, CSP } from './security';
+import { startBatchPoller, stopBatchPoller } from './services/batch-poller';
 
 // Register custom protocol privileges
 protocol.registerSchemesAsPrivileged([
@@ -137,6 +138,9 @@ const initialize = async (): Promise<void> => {
 
     // Create the window
     createWindow();
+
+    // Start batch poller for slow mode generation
+    startBatchPoller();
   } catch (error) {
     log.error('Failed to initialize application:', error);
     app.quit();
@@ -149,6 +153,7 @@ app.whenReady().then(initialize);
 // Quit when all windows are closed, except on macOS
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
+    stopBatchPoller();
     app.quit();
   }
 });
