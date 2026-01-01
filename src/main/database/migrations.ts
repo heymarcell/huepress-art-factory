@@ -144,6 +144,13 @@ Requirements:
       ALTER TABLE ideas ADD COLUMN selected_attempt_id TEXT REFERENCES generation_attempts(id) ON DELETE SET NULL;
     `,
   },
+  {
+    version: 4,
+    name: 'add_notes_column',
+    up: `
+      ALTER TABLE ideas ADD COLUMN notes TEXT;
+    `,
+  },
 ];
 
 /**

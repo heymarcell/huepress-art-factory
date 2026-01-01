@@ -51,6 +51,9 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
     }
   }, [idea.status, idea.updated_at, refetchAttempts]);
 
+  // Get the currently selected attempt (for QC report display)
+  const selectedAttempt = attempts?.find(a => a.id === idea.selected_attempt_id) || attempts?.[0];
+
   const handleStatusChange = (newStatus: Idea['status']) => {
     if (onStatusChange) {
       onStatusChange(newStatus);
@@ -438,6 +441,57 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
                 </ul>
               </section>
             )}
+
+            {/* Notes */}
+            <section className={styles.section}>
+              <div className={styles.sectionHeader}>
+                <FileText size={14} />
+                <h3>Notes</h3>
+              </div>
+              <textarea
+                className={styles.notesTextarea}
+                value={idea.notes || ''}
+                onChange={async (e) => {
+                  const newNotes = e.target.value;
+                  await window.huepress.ideas.updateFields(idea.id, { notes: newNotes });
+                  queryClient.invalidateQueries({ queryKey: ['idea', idea.id] });
+                }}
+                placeholder="Add notes about this idea..."
+                rows={3}
+              />
+            </section>
+
+            {/* QC Report */}
+            {selectedAttempt?.qc_report && (() => {
+              try {
+                const qc = JSON.parse(selectedAttempt.qc_report);
+                return (
+                  <section className={styles.section}>
+                    <div className={styles.sectionHeader}>
+                      <AlertCircle size={14} />
+                      <h3>QC Report</h3>
+                    </div>
+                    <div className={styles.qcReport}>
+                      <div className={`${styles.qcStatus} ${qc.passed ? styles.qcPassed : styles.qcFailed}`}>
+                        {qc.passed ? '✓ Passed' : '✗ Failed'}
+                      </div>
+                      {qc.error && (
+                        <div className={styles.qcError}>{qc.error}</div>
+                      )}
+                      {qc.warnings && qc.warnings.length > 0 && (
+                        <ul className={styles.qcWarnings}>
+                          {qc.warnings.map((w: string, i: number) => (
+                            <li key={i}>{w}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </section>
+                );
+              } catch {
+                return null;
+              }
+            })()}
 
             {/* Metadata */}
             <section className={styles.section}>

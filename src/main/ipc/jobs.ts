@@ -105,6 +105,16 @@ export function registerJobsHandlers(): void {
     }
   });
 
+  // M3: Stop all active jobs (panic button)
+  ipcMain.handle(IPC_CHANNELS.JOBS_STOP_ALL, async () => {
+    try {
+      const stopped = await jobQueue.stopAll();
+      return successResponse({ stopped });
+    } catch (error) {
+      log.error('Error stopping all jobs:', error);
+      return errorResponse(error instanceof Error ? error.message : 'Unknown error');
+    }
+  });
+
   log.info('[Jobs] Handlers registered (M2 + M3 implementation)');
 }
-

@@ -220,3 +220,28 @@
 .statusError {
   color: var(--color-error);
 }
+
+/* Clickable stat cards */
+.clickable {
+  cursor: pointer;
+}
+
+.clickable:hover {
+  border-color: var(--color-accent);
+  background-color: var(--color-bg-tertiary);
+}
+
+/* Danger card (stop button) */
+.dangerCard {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.dangerCard:hover:not(:disabled) {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: var(--color-error);
+}
+
+.dangerCard .actionContent strong {
+  color: var(--color-error);
+}

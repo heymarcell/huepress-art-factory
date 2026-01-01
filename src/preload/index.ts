@@ -50,7 +50,7 @@ const huepressApi = {
      */
     updateFields: (
       id: string,
-      fields: Partial<Pick<Idea, 'status' | 'title' | 'description' | 'category' | 'skill'>>
+      fields: Partial<Pick<Idea, 'status' | 'title' | 'description' | 'category' | 'skill' | 'notes'>>
     ): Promise<IpcResponse<{ updated: boolean }>> =>
       ipcRenderer.invoke(IPC_CHANNELS.IDEAS_UPDATE_FIELDS, { id, fields }),
 
@@ -147,6 +147,13 @@ const huepressApi = {
      */
     edit: (ideaId: string, instruction: string): Promise<IpcResponse<{ queued: boolean }>> =>
       ipcRenderer.invoke(IPC_CHANNELS.GEN_MODIFY, { ideaId, instruction }),
+
+    /**
+     * Stop all active jobs (panic button)
+     * Cancels all queued and generating jobs, marks them as Failed
+     */
+    stopAll: (): Promise<IpcResponse<{ stopped: number }>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.JOBS_STOP_ALL),
   },
 
   // =========================================================================

@@ -24,6 +24,7 @@ export const IPC_CHANNELS = {
   JOBS_RETRY: 'jobs:retry',
   JOBS_GET_STATS: 'jobs:get-stats',
   JOBS_PROGRESS: 'jobs:progress', // Event channel
+  JOBS_STOP_ALL: 'jobs:stop-all', // Panic button
 
   // Generation
   GEN_REGENERATE: 'gen:regenerate',

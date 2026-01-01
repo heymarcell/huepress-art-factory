@@ -73,6 +73,34 @@ export class JobQueue {
     };
   }
 
+  /**
+   * Stop all active jobs (panic button)
+   * Clears the edit queue, cancels running jobs, and marks everything as Failed
+   */
+  async stopAll(): Promise<number> {
+    const db = getDatabase();
+    const now = new Date().toISOString();
+    
+    // Clear the edit queue
+    this.editQueue = [];
+    
+    // Mark all Queued and Generating as Failed
+    const result = db.prepare(`
+      UPDATE ideas 
+      SET status = 'Failed', updated_at = ? 
+      WHERE status IN ('Queued', 'Generating')
+    `).run(now);
+    
+    // Clear running set (jobs will fail gracefully on next iteration)
+    const runningCount = this.running.size;
+    this.running.clear();
+    
+    const stopped = (result.changes || 0) + runningCount;
+    log.info(`[JobQueue] Stopped ${stopped} jobs (panic button)`);
+    
+    return stopped;
+  }
+
   async add(ideaIds: string[]) {
     const db = getDatabase();
     const stmt = db.prepare('UPDATE ideas SET status = ?, updated_at = ? WHERE id = ?');

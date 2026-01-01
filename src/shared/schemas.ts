@@ -68,6 +68,7 @@ export interface Idea {
   dedupe_hash: string;
   image_path?: string | null;
   selected_attempt_id?: string | null;
+  notes?: string | null; // Manual notes for the idea
   created_at: string;
   updated_at: string;
 }

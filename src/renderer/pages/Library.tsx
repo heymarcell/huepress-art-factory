@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   Search,
   Plus,
@@ -41,13 +41,19 @@ type SortOrder = 'asc' | 'desc';
 
 export function Library() {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Initialize filters from URL params
+  const initialStatus = searchParams.get('status');
   const [filters, setFilters] = useState<{
     status: IdeaStatus[];
     category: string | null;
     skill: string | null;
     search: string;
   }>({
-    status: [],
+    status: initialStatus && STATUS_OPTIONS.includes(initialStatus as IdeaStatus) 
+      ? [initialStatus as IdeaStatus] 
+      : [],
     category: null,
     skill: null,
     search: '',

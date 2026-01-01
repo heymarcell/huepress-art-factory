@@ -715,3 +715,68 @@
   padding: 16px 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* Notes Section */
+.notesTextarea {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--color-text-primary, #fff);
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.notesTextarea:focus {
+  outline: none;
+  border-color: var(--color-accent, #3b82f6);
+}
+
+.notesTextarea::placeholder {
+  color: var(--color-text-muted, #666);
+}
+
+/* QC Report */
+.qcReport {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+}
+
+.qcStatus {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.qcPassed {
+  color: #22c55e;
+}
+
+.qcFailed {
+  color: #ef4444;
+}
+
+.qcError {
+  color: #f97316;
+  font-size: 13px;
+  padding: 8px;
+  background: rgba(249, 115, 22, 0.1);
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.qcWarnings {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  color: var(--color-text-secondary, #888);
+}
+
+.qcWarnings li {
+  margin-bottom: 4px;
+}
