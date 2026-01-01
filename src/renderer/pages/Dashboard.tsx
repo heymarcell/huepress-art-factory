@@ -27,6 +27,7 @@ export function Dashboard() {
       const result = await window.huepress.app.getProjectInfo();
       return result.success ? result.data : null;
     },
+    refetchInterval: 1000,
   });
 
   const { data: apiKeyStatus } = useQuery({
