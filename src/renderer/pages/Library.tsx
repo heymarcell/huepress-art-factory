@@ -82,6 +82,7 @@ export function Library() {
   const [duplicates, setDuplicates] = useState<{ id: string; batch_id: string; title: string; status: string; created_at: string; image_path?: string; skill?: string; category?: string }[][]>([]);
   const [showDuplicatesModal, setShowDuplicatesModal] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set());
   const newBatchIdRef = useRef<string | null>(null);
   
   const sortMenuRef = useRef<HTMLDivElement>(null);
@@ -320,17 +321,35 @@ export function Library() {
       if (result.success && result.data.length > 0) {
         let groups = result.data;
         
-        // If we have a new batch ID, sort groups to show those containing new imports first
-        if (newBatchIdRef.current) {
-          const batchId = newBatchIdRef.current;
-          groups = groups.sort((a, b) => {
+        // Sort groups: prioritize new imports and mixed-status groups, all-approved at end
+        const batchId = newBatchIdRef.current;
+        groups = groups.sort((a, b) => {
+          const aAllApproved = a.every(item => item.status === 'Approved');
+          const bAllApproved = b.every(item => item.status === 'Approved');
+          
+          // All-approved groups go to the end
+          if (aAllApproved && !bAllApproved) return 1;
+          if (!aAllApproved && bAllApproved) return -1;
+          
+          // Among same type, prioritize groups with new imports
+          if (batchId) {
             const aHasNew = a.some(item => item.batch_id === batchId);
             const bHasNew = b.some(item => item.batch_id === batchId);
             if (aHasNew && !bHasNew) return -1;
             if (!aHasNew && bHasNew) return 1;
-            return b.length - a.length; // Secondary sort by size
-          });
-        }
+          }
+          
+          return b.length - a.length; // Secondary sort by size
+        });
+        
+        // Auto-collapse all-approved groups
+        const toCollapse = new Set<number>();
+        groups.forEach((group, index) => {
+          if (group.every(item => item.status === 'Approved')) {
+            toCollapse.add(index);
+          }
+        });
+        setCollapsedGroups(toCollapse);
         
         setDuplicates(groups);
         setShowDuplicatesModal(true);
@@ -960,10 +979,43 @@ export function Library() {
                 These items have very similar semantic meaning. Review and merge/delete duplicates.
               </p>
               <div className={styles.duplicatesList}>
-                {duplicates.map((group, i) => (
-                  <div key={i} className={styles.duplicateGroup}>
-                    <div className={styles.groupHeader}>Group {i + 1} ({group.length} items)</div>
-                    {group.map((item) => (
+                {duplicates.map((group, i) => {
+                  const isCollapsed = collapsedGroups.has(i);
+                  const isAllApproved = group.every(item => item.status === 'Approved');
+                  return (
+                    <div key={i} className={styles.duplicateGroup}>
+                      <div 
+                        className={styles.groupHeader}
+                        onClick={() => {
+                          setCollapsedGroups(prev => {
+                            const next = new Set(prev);
+                            if (next.has(i)) {
+                              next.delete(i);
+                            } else {
+                              next.add(i);
+                            }
+                            return next;
+                          });
+                        }}
+                        style={{ 
+                          cursor: 'pointer', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 'var(--space-2)',
+                          backgroundColor: isAllApproved ? 'rgba(34, 197, 94, 0.1)' : undefined,
+                        }}
+                      >
+                        <ChevronDown 
+                          size={14} 
+                          style={{ 
+                            transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.15s ease'
+                          }} 
+                        />
+                        Group {i + 1} ({group.length} items)
+                        {isAllApproved && <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-success)', marginLeft: 'auto' }}>✓ All Approved</span>}
+                      </div>
+                      {!isCollapsed && group.map((item) => (
                       <div 
                         key={item.id} 
                         className={styles.duplicateItem}
@@ -1030,8 +1082,9 @@ export function Library() {
                         </div>
                       </div>
                     ))}
-                  </div>
-                ))}
+                      </div>
+                    );
+                  })}
               </div>
             </div>
           </div>
