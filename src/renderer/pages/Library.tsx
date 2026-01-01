@@ -766,17 +766,37 @@ export function Library() {
           )}
         </div>
 
-        {/* Duplicates Button */}
-        <button
-          className={styles.toolbarBtn}
-          onClick={checkForDuplicates}
-          disabled={checkingDuplicates}
-          title="Find semantic duplicates (vector search)"
-          style={{ width: 'auto', paddingRight: '8px' }}
-        >
-          {checkingDuplicates ? <RefreshCw size={14} className={styles.spin} /> : <Copy size={14} />}
-          {checkingDuplicates ? 'Checking...' : 'Duplicates'}
-        </button>
+        {/* Duplicates Button Group */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
+          <button
+            className={styles.toolbarBtn}
+            onClick={checkForDuplicates}
+            disabled={checkingDuplicates}
+            title="Find semantic duplicates (vector search)"
+            style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
+          >
+            {checkingDuplicates ? <RefreshCw size={14} className={styles.spin} /> : <Copy size={14} />}
+            {checkingDuplicates ? 'Checking...' : 'Duplicates'}
+          </button>
+          <button
+            className={styles.toolbarBtn}
+            onClick={async () => {
+              const confirmed = confirm('Reset all accepted duplicates? This will re-include previously accepted items in future duplicate checks.');
+              if (confirmed) {
+                const result = await window.huepress.ideas.resetIgnoreDuplicates();
+                if (result.success) {
+                  alert(`Reset ${result.data.reset} item(s). Run duplicate check again to see results.`);
+                } else {
+                  alert('Failed to reset: ' + (result.error || 'Unknown error'));
+                }
+              }
+            }}
+            title="Reset accepted duplicates"
+            style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0, padding: '6px 8px' }}
+          >
+            <RotateCcw size={14} />
+          </button>
+        </div>
 
         {/* Filter dropdown */}
         <div className={styles.dropdown} ref={filterMenuRef}>
