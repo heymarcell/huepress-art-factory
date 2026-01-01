@@ -15,6 +15,7 @@ const navItems = [
   { path: '/import', label: 'Import', icon: Import },
   { path: '/library', label: 'Library', icon: Library },
   { path: '/export', label: 'Export', icon: Download },
+  { path: '/batch-jobs', label: 'Batch Jobs', icon: Layers },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
