@@ -138,6 +138,9 @@ export function registerExportHandlers(): void {
             await fs.writeFile(sidecarPath, JSON.stringify(sidecar, null, 2), 'utf-8');
           }
 
+          // Update status to Exported
+          db.prepare('UPDATE ideas SET status = ? WHERE id = ?').run('Exported', ideaId);
+
           exported++;
         } catch (error) {
           log.error(`Error exporting idea ${ideaId}:`, error);

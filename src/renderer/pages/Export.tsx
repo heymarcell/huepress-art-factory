@@ -1,12 +1,10 @@
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
-import { 
-  Folder, 
-  Download, 
-  CheckSquare, 
-  Square, 
-  ArrowLeft,
+import { useState, useEffect, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Folder,
+  Download,
+  CheckSquare,
+  Square,
   Check,
   AlertCircle,
   Loader2,
@@ -15,13 +13,14 @@ import type { Idea } from '../../shared/schemas';
 import styles from './Export.module.css';
 
 export function Export() {
+  const queryClient = useQueryClient();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [destination, setDestination] = useState<string | null>(null);
+  const [destination, setDestination] = useState<string>('');
   const [format, setFormat] = useState<'png' | 'tiff'>('png');
   const [includeSidecar, setIncludeSidecar] = useState(true);
   const [exportResult, setExportResult] = useState<{
     success: boolean;
-    exported: number;
+    exported?: number;
     errors?: string[];
   } | null>(null);
 
@@ -38,24 +37,24 @@ export function Export() {
     },
   });
 
-  const ideas = data || [];
-  const ideasWithImages = ideas.filter((idea: Idea) => idea.image_path);
+  // Filter ideas with images
+  const ideasWithImages = (data || []).filter((idea: Idea) => idea.image_path);
 
-  // Auto-select all exportable ideas on load
+  // Auto-select all on first load only
+  const hasInitializedRef = useRef(false);
   useEffect(() => {
-    if (ideasWithImages.length > 0 && selectedIds.size === 0) {
+    if (!hasInitializedRef.current && ideasWithImages.length > 0) {
       setSelectedIds(new Set(ideasWithImages.map((i: Idea) => i.id)));
+      hasInitializedRef.current = true;
     }
   }, [ideasWithImages]);
 
+  // Selection Logic
   const toggleSelection = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -75,6 +74,7 @@ export function Export() {
     }
   };
 
+  // Export Mutation
   const exportMutation = useMutation({
     mutationFn: async () => {
       if (!destination) throw new Error('No destination selected');
@@ -96,6 +96,8 @@ export function Export() {
         exported: data.exported,
         errors: data.errors,
       });
+      // Refetch to show updated 'Exported' status
+      queryClient.invalidateQueries({ queryKey: ['ideas'] });
     },
     onError: (error) => {
       setExportResult({
@@ -110,172 +112,153 @@ export function Export() {
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
-        <Link to="/library" className={styles.backLink}>
-          <ArrowLeft size={16} />
-          Back to Library
-        </Link>
-        <h1>Export Images</h1>
-        <p className={styles.subtitle}>
-          Export your coloring pages as image files
-        </p>
-      </header>
-
-      {/* Export Result */}
-      {exportResult && (
-        <div className={`${styles.resultCard} ${exportResult.success ? styles.success : styles.error}`}>
-          {exportResult.success ? (
-            <>
-              <Check size={24} />
-              <div>
-                <strong>Export Complete!</strong>
-                <p>Successfully exported {exportResult.exported} images to:</p>
-                <code>{destination}</code>
-                {exportResult.errors && exportResult.errors.length > 0 && (
-                  <div className={styles.warnings}>
-                    <strong>Warnings:</strong>
-                    <ul>
-                      {exportResult.errors.map((err, i) => (
-                        <li key={i}>{err}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <>
-              <AlertCircle size={24} />
-              <div>
-                <strong>Export Failed</strong>
-                <p>{exportResult.errors?.[0]}</p>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Options Panel */}
-      <div className={styles.optionsPanel}>
-        <div className={styles.optionGroup}>
-          <label>Destination Folder</label>
-          <div className={styles.folderPicker}>
-            <button onClick={selectFolder} className={styles.folderBtn}>
-              <Folder size={16} />
-              {destination ? 'Change Folder' : 'Select Folder'}
+      <div className={styles.library}>
+        <header className={styles.header}>
+          <div>
+            <h1 className={styles.title}>Export Images</h1>
+            <p className={styles.subtitle}>{selectedIds.size} images selected</p>
+          </div>
+          
+          <div className={styles.headerActions}>
+             <button
+              onClick={() => exportMutation.mutate()}
+              disabled={!canExport}
+              className={styles.btnPrimary}
+            >
+              {exportMutation.isPending ? (
+                <>
+                  <Loader2 size={16} className={styles.spin} />
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download size={16} />
+                  Export Selected
+                </>
+              )}
             </button>
-            {destination && (
-              <span className={styles.folderPath}>{destination}</span>
+          </div>
+        </header>
+
+        {/* Export Result */}
+        {exportResult && (
+          <div className={`${styles.resultCard} ${exportResult.success ? styles.success : styles.error}`}>
+            {exportResult.success ? (
+              <div className={styles.resultContent}>
+                <Check size={16} />
+                <span>Successfully exported {exportResult.exported} images to {destination}</span>
+                <button className={styles.closeResult} onClick={() => setExportResult(null)}>Dismiss</button>
+              </div>
+            ) : (
+              <div className={styles.resultContent}>
+                <AlertCircle size={16} />
+                <span>Failed: {exportResult.errors?.[0]}</span>
+                 <button className={styles.closeResult} onClick={() => setExportResult(null)}>Dismiss</button>
+              </div>
             )}
           </div>
-        </div>
+        )}
 
-        <div className={styles.optionGroup}>
-          <label>Format</label>
-          <div className={styles.formatToggle}>
+        {/* Toolbar / Options */}
+        <div className={styles.toolbar}>
+          <div className={styles.toolbarGroup}>
+            <div className={styles.folderPicker}>
+              <button onClick={selectFolder} className={styles.btnSecondary}>
+                <Folder size={14} />
+                {destination ? 'Change Destination' : 'Select Destination'}
+              </button>
+              {destination && (
+                 <span className={styles.folderPath} title={destination}>{destination}</span>
+              )}
+            </div>
+          </div>
+
+          <div className={styles.toolbarGroup}>
+            <div className={styles.formatToggle}>
+              <button
+                className={`${styles.toggleBtn} ${format === 'png' ? styles.active : ''}`}
+                onClick={() => setFormat('png')}
+              >
+                PNG
+              </button>
+              <button
+                className={`${styles.toggleBtn} ${format === 'tiff' ? styles.active : ''}`}
+                onClick={() => setFormat('tiff')}
+              >
+                TIFF
+              </button>
+            </div>
+            
+            {/* JSON Metadata Checkbox - Custom styled */}
             <button
-              className={`${styles.formatBtn} ${format === 'png' ? styles.active : ''}`}
-              onClick={() => setFormat('png')}
+              onClick={() => setIncludeSidecar(!includeSidecar)}
+              className={`${styles.checkboxBtn} ${includeSidecar ? styles.checkboxBtnActive : ''}`}
             >
-              PNG
-            </button>
-            <button
-              className={`${styles.formatBtn} ${format === 'tiff' ? styles.active : ''}`}
-              onClick={() => setFormat('tiff')}
-            >
-              TIFF
+              {includeSidecar && <Check size={14} />}
+              JSON Metadata
             </button>
           </div>
+          
+          <div className={styles.toolbarSpacer} />
+          
+           <button onClick={selectAll} className={styles.btnText}>
+            {selectedIds.size === ideasWithImages.length ? 'Deselect All' : 'Select All'}
+          </button>
         </div>
 
-        <div className={styles.optionGroup}>
-          <label className={styles.checkboxLabel}>
-            <input
-              type="checkbox"
-              checked={includeSidecar}
-              onChange={(e) => setIncludeSidecar(e.target.checked)}
-            />
-            Include metadata JSON files
-          </label>
-          <span className={styles.optionHint}>
-            Creates a .json file with title, description, tags, etc.
-          </span>
-        </div>
-      </div>
-
-      {/* Selection */}
-      <div className={styles.selectionHeader}>
-        <button onClick={selectAll} className={styles.selectAllBtn}>
-          {selectedIds.size === ideasWithImages.length ? (
-            <CheckSquare size={16} />
-          ) : (
-            <Square size={16} />
-          )}
-          {selectedIds.size === ideasWithImages.length ? 'Deselect All' : 'Select All'}
-        </button>
-        <span className={styles.selectionCount}>
-          {selectedIds.size} of {ideasWithImages.length} selected
-        </span>
-      </div>
-
-      {/* Ideas Grid */}
-      {isLoading ? (
-        <div className={styles.loading}>Loading exportable items...</div>
-      ) : ideasWithImages.length === 0 ? (
-        <div className={styles.empty}>
-          <p>No approved or generated images to export.</p>
-          <p>Generate some images first, then come back here!</p>
-        </div>
-      ) : (
-        <div className={styles.grid}>
-          {ideasWithImages.map((idea: Idea) => (
-            <div
-              key={idea.id}
-              className={`${styles.card} ${selectedIds.has(idea.id) ? styles.selected : ''}`}
-              onClick={() => toggleSelection(idea.id)}
-            >
-              <div className={styles.checkbox}>
-                {selectedIds.has(idea.id) ? (
-                  <CheckSquare size={20} />
-                ) : (
-                  <Square size={20} />
-                )}
-              </div>
-              {idea.image_path && (
-                <img
-                  src={`asset://${idea.image_path}`}
-                  alt={idea.title}
-                  className={styles.thumbnail}
-                />
-              )}
-              <div className={styles.cardTitle}>{idea.title}</div>
-              <div className={styles.cardMeta}>
-                <span className={styles.statusBadge}>{idea.status}</span>
-              </div>
+        {/* Grid Content */}
+        <div className={styles.content}>
+          {isLoading ? (
+            <div className={styles.loading}>
+              <Loader2 size={32} className={styles.spin} />
+              <p>Loading your masterpieces...</p>
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Export Button */}
-      <div className={styles.footer}>
-        <button
-          onClick={() => exportMutation.mutate()}
-          disabled={!canExport}
-          className={styles.exportBtn}
-        >
-          {exportMutation.isPending ? (
-            <>
-              <Loader2 size={18} className={styles.spin} />
-              Exporting...
-            </>
+          ) : ideasWithImages.length === 0 ? (
+            <div className={styles.empty}>
+              <p>No approved images to export.</p>
+            </div>
           ) : (
             <>
-              <Download size={18} />
-              Export {selectedIds.size} Images
+              {console.log('Rendering grid with', ideasWithImages.length, 'ideas')}
+              <div className={styles.grid}>
+              {ideasWithImages.map((idea) => {
+                const isSelected = selectedIds.has(idea.id);
+                return (
+                  <div
+                    key={idea.id}
+                    className={`${styles.card} ${isSelected ? styles.selected : ''}`}
+                    onClick={() => toggleSelection(idea.id)}
+                  >
+                    <div className={styles.checkbox}>
+                      {isSelected ? (
+                        <CheckSquare size={20} />
+                      ) : (
+                        <Square size={20} />
+                      )}
+                    </div>
+                    
+                    {idea.image_path && (
+                      <img
+                        src={`asset://${idea.image_path}`}
+                        alt={idea.title}
+                        className={styles.thumbnail}
+                        loading="lazy"
+                      />
+                    )}
+                    
+                    <div className={styles.cardInfo}>
+                      <div className={styles.cardTitle}>{idea.title}</div>
+                      <div className={styles.cardMeta}>
+                        <span className={styles.statusBadge}>{idea.status}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
             </>
           )}
-        </button>
+        </div>
       </div>
     </div>
   );
