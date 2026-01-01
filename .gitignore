@@ -90,3 +90,9 @@ typings/
 
 # Electron-Forge
 out/
+
+# Local Development Data
+dev-data/assets/images/*
+!dev-data/assets/images/.gitkeep
+*.db-shm
+*.db-wal
