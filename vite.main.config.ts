@@ -9,7 +9,14 @@ export default defineConfig({
       formats: ['cjs'],
     },
     rollupOptions: {
-      external: ['electron', 'better-sqlite3', 'electron-store', 'electron-log'],
+      external: [
+        'electron',
+        'better-sqlite3',
+        'electron-store',
+        'electron-log',
+        '@huggingface/transformers',
+        'onnxruntime-node',
+      ],
     },
   },
   resolve: {
