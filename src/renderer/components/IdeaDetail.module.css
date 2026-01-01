@@ -8,7 +8,7 @@
   background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   justify-content: flex-end;
-  z-index: 100;
+  z-index: 2000;
   animation: fadeIn var(--transition-fast) ease-out;
 }
 

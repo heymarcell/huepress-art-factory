@@ -277,6 +277,26 @@ export function Library() {
     },
   });
 
+  const handleOpenDuplicate = async (id: string) => {
+    // Try to find in loaded list first
+    const ideas = data?.ideas || [];
+    const existing = ideas.find(i => i.id === id);
+    if (existing) {
+      setSelectedIdea(existing);
+      return;
+    }
+    
+    // Fallback: fetch directly
+    try {
+      const res = await window.huepress.ideas.getById(id);
+      if (res.success && res.data) {
+         setSelectedIdea(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch idea details", err);
+    }
+  };
+
   const checkForDuplicates = async () => {
     setCheckingDuplicates(true);
     try {
@@ -843,7 +863,14 @@ export function Library() {
                           <div className={styles.duplicateImage} />
                         )}
                         <div className={styles.duplicateInfo}>
-                          <strong>{item.title}</strong>
+                          <strong 
+                            onClick={() => handleOpenDuplicate(item.id)}
+                            className={styles.duplicateTitleKey}
+                            style={{ cursor: 'pointer' }}
+                            title="View Details"
+                          >
+                            {item.title}
+                          </strong>
                           <div className={styles.duplicateMeta}>
                             <span className={`${styles.statusBadge} ${styles[`status${item.status}`]}`}>
                               {item.status}
