@@ -113,14 +113,31 @@ export class GeminiService {
    * Returns the batch job name for polling
    */
   async submitBatchJob(
-    requests: { ideaId: string; prompt: string; skill: string }[]
+    requests: { ideaId: string; prompt: string; skill: string }[],
+    templateImages: Buffer[] = []
   ): Promise<string> {
     // Build InlinedRequest array per SDK spec
     const inlinedRequests = requests.map((req) => {
       const systemInstruction = getSystemInstruction(req.skill);
+      
+      // Build parts with text prompt
+      const parts: any[] = [{ text: req.prompt }];
+      
+      // Add template images if provided
+      if (templateImages && templateImages.length > 0) {
+        templateImages.forEach(img => {
+          parts.push({
+            inlineData: {
+              mimeType: 'image/png',
+              data: img.toString('base64')
+            }
+          });
+        });
+      }
+
       return {
-        model: 'gemini-3-pro-image-preview',
-        contents: [{ role: 'user', parts: [{ text: req.prompt }] }],
+        model: 'gemini-3-pro-image-preview', // Requires preview model for batch image gen
+        contents: [{ role: 'user', parts: parts }],
         metadata: { ideaId: req.ideaId },
         config: {
           responseModalities: ['IMAGE' as const],

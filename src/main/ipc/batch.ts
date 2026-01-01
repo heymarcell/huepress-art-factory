@@ -11,6 +11,8 @@ import { getDatabase } from '../database';
 import { GeminiService } from '../services/gemini';
 import { getApiKey } from './settings';
 import { triggerPoll } from '../services/batch-poller';
+import * as fs from 'fs';
+import * as path from 'path';
 
 interface BatchJobRow {
   id: string;
@@ -52,17 +54,33 @@ export function registerBatchHandlers(): void {
         return idea;
       });
       
-      // Build batch requests
+      // Load Template Images (Borders)
+      const templateImages: Buffer[] = [];
+      try {
+        const templates = ['BORDER_PORTRAIT.png', 'BORDER_LANDSCAPE.png'];
+        for (const tpl of templates) {
+             const templatePath = path.join(process.cwd(), 'resources', 'templates', tpl);
+             if (fs.existsSync(templatePath)) {
+                templateImages.push(fs.readFileSync(templatePath));
+             } else {
+                log.warn(`Batch: Border template not found at ${templatePath}`);
+             }
+        }
+      } catch (e) {
+        log.error('Batch: Failed to load template images', e);
+      }
+
+      // Build batch requests using same prompt structure as real-time queue
       const batchRequests = ideas.map(idea => ({
         ideaId: idea.id,
         prompt: JSON.stringify({
           title: idea.title,
           description: idea.description,
+          extendedDescription: idea.extended_description, // Ensure extended_description is used
           skill: idea.skill,
           category: idea.category,
-          tags: idea.tags ? JSON.parse(idea.tags) : [],
-          extendedDescription: idea.extended_description,
-        }),
+          tags: idea.tags ? JSON.parse(idea.tags) : []
+        }) + "\n\nCRITICAL VISUAL CONSTRAINT: I have provided TWO reference border templates (Portrait and Landscape). Based on the subject, CHOOSE ONLY ONE that fits best. Generate the coloring content INSIDE that chosen border. Ignore the other border. Do NOT output two images, just ONE filling the chosen orientation. \n\nIMPORTANT: Do NOT fill areas with solid black ink. Use outlines only. No silhouettes or heavy shadows.",
         skill: idea.skill,
       }));
       
@@ -81,7 +99,7 @@ export function registerBatchHandlers(): void {
       
       // Submit to Gemini Batch API
       try {
-        const geminiJobId = await gemini.submitBatchJob(batchRequests);
+        const geminiJobId = await gemini.submitBatchJob(batchRequests, templateImages);
         
         // Update batch job with Gemini job ID
         db.prepare(`
