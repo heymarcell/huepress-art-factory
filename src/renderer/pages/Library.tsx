@@ -48,6 +48,10 @@ export function Library() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   
+  // Refs for throttling updates
+  const lastInvalidateRef = useRef(0);
+  const throttleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
   // Initialize filters from URL params
   const initialStatus = searchParams.get('status');
   const [filters, setFilters] = useState<{
@@ -101,17 +105,29 @@ export function Library() {
     if (!window.huepress?.jobs?.onProgress) return;
 
     const unsubscribe = window.huepress.jobs.onProgress((progressData) => {
-      // Invalidate queries when we see progress updates
-      // This ensures the list reflects state changes (Queued -> Generating -> Generated/Failed)
-      queryClient.invalidateQueries({ queryKey: ['ideas'] });
-      // Also invalidate the specific idea query if it matches the current selection
+      // Always invalidate specific idea (Detail view) immediately as it's targeted and cheap
       if (progressData?.ideaId) {
         queryClient.invalidateQueries({ queryKey: ['idea', progressData.ideaId] });
+      }
+
+      // Throttle main list invalidation to prevent UI thrashing/race conditions during rapid generation
+      const now = Date.now();
+      if (now - lastInvalidateRef.current > 1000) {
+        lastInvalidateRef.current = now;
+        queryClient.invalidateQueries({ queryKey: ['ideas'] });
+      } else {
+        // Schedule trailing update to ensure we catch final state
+        if (throttleTimeoutRef.current) clearTimeout(throttleTimeoutRef.current);
+        throttleTimeoutRef.current = setTimeout(() => {
+          lastInvalidateRef.current = Date.now();
+          queryClient.invalidateQueries({ queryKey: ['ideas'] });
+        }, 1000);
       }
     });
 
     return () => {
       unsubscribe();
+      if (throttleTimeoutRef.current) clearTimeout(throttleTimeoutRef.current);
     };
   }, [queryClient]);
 
