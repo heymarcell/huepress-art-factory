@@ -21,7 +21,6 @@ import {
   Ban,
   Check,
   Paintbrush,
-  RotateCcw,
 } from 'lucide-react';
 import type { Idea, IdeaStatus } from '../../shared/schemas';
 import { IdeaDetail } from '../components/IdeaDetail';
@@ -766,42 +765,16 @@ export function Library() {
           )}
         </div>
 
-        {/* Duplicates Button Group */}
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <button
-            className={styles.toolbarBtn}
-            onClick={checkForDuplicates}
-            disabled={checkingDuplicates}
-            title="Find semantic duplicates (vector search)"
-            style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
-          >
-            {checkingDuplicates ? <RefreshCw size={14} className={styles.spin} /> : <Copy size={14} />}
-            {checkingDuplicates ? 'Checking...' : 'Duplicates'}
-          </button>
-          <button
-            className={styles.toolbarBtn}
-            onClick={async () => {
-              const confirmed = confirm('Reset all accepted duplicates? This will re-include previously accepted items in future duplicate checks.');
-              if (confirmed) {
-                const result = await window.huepress.ideas.resetIgnoreDuplicates();
-                if (result.success) {
-                  alert(`Reset ${result.data.reset} item(s). Run duplicate check again to see results.`);
-                } else {
-                  alert('Failed to reset: ' + (result.error || 'Unknown error'));
-                }
-              }
-            }}
-            title="Reset accepted duplicates"
-            style={{ 
-              borderTopLeftRadius: 0, 
-              borderBottomLeftRadius: 0, 
-              marginLeft: '-1px',
-              padding: '6px 8px' 
-            }}
-          >
-            <RotateCcw size={14} />
-          </button>
-        </div>
+        {/* Duplicates Button */}
+        <button
+          className={styles.toolbarBtn}
+          onClick={checkForDuplicates}
+          disabled={checkingDuplicates}
+          title="Find semantic duplicates (vector search)"
+        >
+          {checkingDuplicates ? <RefreshCw size={14} className={styles.spin} /> : <Copy size={14} />}
+          {checkingDuplicates ? 'Checking...' : 'Duplicates'}
+        </button>
 
         {/* Filter dropdown */}
         <div className={styles.dropdown} ref={filterMenuRef}>
@@ -961,28 +934,9 @@ export function Library() {
           <div className={styles.modalContent}>
             <div className={styles.modalHeader}>
               <h3>Potential Duplicates Found ({duplicates.length} groups)</h3>
-              <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
-                <button 
-                  onClick={async () => {
-                    const confirmed = confirm('Reset all accepted duplicates? This will re-include previously accepted items in future duplicate checks.');
-                    if (confirmed) {
-                      const result = await window.huepress.ideas.resetIgnoreDuplicates();
-                      if (result.success) {
-                        alert(`Reset ${result.data.reset} item(s). Run duplicate check again to see results.`);
-                      }
-                    }
-                  }}
-                  className={styles.secondaryBtn}
-                  title="Reset all accepted duplicates"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}
-                >
-                  <RotateCcw size={14} />
-                  Reset Accepted
-                </button>
-                <button onClick={() => setShowDuplicatesModal(false)} className={styles.closeBtn}>
-                  <X size={20} />
-                </button>
-              </div>
+              <button onClick={() => setShowDuplicatesModal(false)} className={styles.closeBtn}>
+                <X size={20} />
+              </button>
             </div>
             <div className={styles.modalBody}>
               <p className={styles.modalDesc}>
@@ -993,7 +947,11 @@ export function Library() {
                   <div key={i} className={styles.duplicateGroup}>
                     <div className={styles.groupHeader}>Group {i + 1} ({group.length} items)</div>
                     {group.map((item) => (
-                      <div key={item.id} className={styles.duplicateItem}>
+                      <div 
+                        key={item.id} 
+                        className={styles.duplicateItem}
+                        style={item.status === 'Approved' ? { backgroundColor: 'rgba(34, 197, 94, 0.1)', borderColor: 'rgba(34, 197, 94, 0.3)' } : undefined}
+                      >
                         {item.image_path ? (
                           <img 
                             src={`asset://${item.image_path}`} 
@@ -1030,17 +988,17 @@ export function Library() {
                           </div>
                         </div>
                         <div className={styles.duplicateActions}>
-                          <button
-                            className={styles.ignoreBtn}
-                            onClick={() => {
-                               updateFieldsMutation.mutate({ id: item.id, fields: { ignore_duplicates: true } });
-                               // Optimistically remove from list
-                               setDuplicates(prev => prev.map(g => g.filter(i => i.id !== item.id)).filter(g => g.length > 1));
-                            }}
-                            title="Keep (Ignore duplicate warning)"
-                          >
-                            <Check size={16} />
-                          </button>
+                          {item.status !== 'Approved' && (
+                            <button
+                              className={styles.ignoreBtn}
+                              onClick={() => {
+                                 batchStatusMutation.mutate({ ids: [item.id], status: 'Approved' });
+                              }}
+                              title="Approve this item (mark as Approved)"
+                            >
+                              <Check size={16} />
+                            </button>
+                          )}
                           <button
                             className={styles.omitBtn}
                             onClick={() => {

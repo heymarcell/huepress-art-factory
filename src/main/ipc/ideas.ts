@@ -533,8 +533,7 @@ export function registerIdeasHandlers(): void {
             (SELECT image_path FROM generation_attempts WHERE idea_id = ideas.id ORDER BY created_at DESC LIMIT 1)
           ) as image_path 
         FROM ideas
-        WHERE (ignore_duplicates = 0 OR ignore_duplicates IS NULL)
-        AND status != 'Omitted'
+        WHERE status != 'Omitted'
       `).all() as { 
         id: string; title: string; description: string; status: string; embedding: Buffer | null; created_at: string; image_path?: string; skill?: string; category?: string
       }[];
