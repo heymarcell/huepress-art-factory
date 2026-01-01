@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, FileJson, Info } from 'lucide-react';
 import styles from './Import.module.css';
 
@@ -16,6 +17,7 @@ const SAMPLE_JSON = `[
 ]`;
 
 export function Import() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [jsonInput, setJsonInput] = useState('');
   const [validationResult, setValidationResult] = useState<{
@@ -26,18 +28,26 @@ export function Import() {
 
   const importMutation = useMutation({
     mutationFn: async (json: string) => {
+      // ... same
       const result = await window.huepress.ideas.importJsonArray(json);
       if (!result.success) {
         throw new Error(result.error);
       }
       return result.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['project-info'] });
       queryClient.invalidateQueries({ queryKey: ['ideas'] });
       queryClient.invalidateQueries({ queryKey: ['batches'] });
-      setJsonInput('');
-      setValidationResult(null);
+      
+      // Navigate to library and trigger duplicate check
+      // Allow slight delay for invalidation to propagate? No need.
+      navigate('/library', { 
+        state: { 
+          autoCheckDuplicates: true,
+          importCount: data.imported 
+        } 
+      });
     },
   });
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useLocation } from 'react-router-dom';
 import {
   Search,
   Plus,
@@ -45,6 +45,7 @@ type SortOrder = 'asc' | 'desc';
 export function Library() {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   
   // Initialize filters from URL params
   const initialStatus = searchParams.get('status');
@@ -314,6 +315,16 @@ export function Library() {
       setCheckingDuplicates(false);
     }
   };
+
+  // Auto-check duplicates after import
+  useEffect(() => {
+    const state = location.state as { autoCheckDuplicates?: boolean } | null;
+    if (state?.autoCheckDuplicates) {
+      // Use setTimeout to ensure UI is ready
+      setTimeout(() => checkForDuplicates(), 100);
+      window.history.replaceState({}, '');
+    }
+  }, [location]);
 
   const generateMutation = useMutation({
     mutationFn: async (id: string) => {
