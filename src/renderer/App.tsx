@@ -4,6 +4,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Import } from './pages/Import';
 import { Library } from './pages/Library';
 import { Settings } from './pages/Settings';
+import { Export } from './pages/Export';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="import" element={<Import />} />
           <Route path="library" element={<Library />} />
+          <Route path="export" element={<Export />} />
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>

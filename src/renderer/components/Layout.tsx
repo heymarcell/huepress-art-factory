@@ -6,6 +6,7 @@ import {
   Library,
   Settings,
   Layers,
+  Download,
 } from 'lucide-react';
 import styles from './Layout.module.css';
 
@@ -13,6 +14,7 @@ const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/import', label: 'Import', icon: Import },
   { path: '/library', label: 'Library', icon: Library },
+  { path: '/export', label: 'Export', icon: Download },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 

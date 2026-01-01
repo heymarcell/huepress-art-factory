@@ -210,7 +210,7 @@ const huepressApi = {
     /**
      * Run export for selected ideas
      */
-    run: (options: ExportOptions): Promise<IpcResponse<{ exported: number; path: string }>> =>
+    run: (options: ExportOptions): Promise<IpcResponse<{ exported: number; path: string; errors?: string[] }>> =>
       ipcRenderer.invoke(IPC_CHANNELS.EXPORT_RUN, options),
 
     /**
