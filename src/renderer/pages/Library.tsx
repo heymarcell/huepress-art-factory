@@ -833,10 +833,10 @@ export function Library() {
                       <div key={item.id} className={styles.duplicateItem}>
                         {item.image_path ? (
                           <img 
-                            src={`file://${item.image_path}`} 
+                            src={`asset://${item.image_path}`} 
                             className={styles.duplicateImage} 
                             alt="" 
-                            onClick={() => setLightboxImage(`file://${item.image_path}`)}
+                            onClick={() => setLightboxImage(`asset://${item.image_path}`)}
                             style={{ cursor: 'zoom-in' }}
                           />
                         ) : (
