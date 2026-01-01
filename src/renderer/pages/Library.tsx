@@ -75,6 +75,7 @@ export function Library() {
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const [duplicates, setDuplicates] = useState<{ id: string; title: string; status: string; created_at: string; image_path?: string }[][]>([]);
   const [showDuplicatesModal, setShowDuplicatesModal] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   
   const sortMenuRef = useRef<HTMLDivElement>(null);
   const filterMenuRef = useRef<HTMLDivElement>(null);
@@ -831,7 +832,13 @@ export function Library() {
                     {group.map((item) => (
                       <div key={item.id} className={styles.duplicateItem}>
                         {item.image_path ? (
-                          <img src={`file://${item.image_path}`} className={styles.duplicateImage} alt="" />
+                          <img 
+                            src={`file://${item.image_path}`} 
+                            className={styles.duplicateImage} 
+                            alt="" 
+                            onClick={() => setLightboxImage(`file://${item.image_path}`)}
+                            style={{ cursor: 'zoom-in' }}
+                          />
                         ) : (
                           <div className={styles.duplicateImage} />
                         )}
@@ -870,6 +877,16 @@ export function Library() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightboxImage && (
+        <div className={styles.lightbox} onClick={() => setLightboxImage(null)}>
+          <img src={lightboxImage} onClick={(e) => e.stopPropagation()} alt="Preview" />
+          <button className={styles.closeLightbox} onClick={() => setLightboxImage(null)}>
+            <X size={24} />
+          </button>
         </div>
       )}
     </div>

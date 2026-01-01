@@ -528,7 +528,10 @@ export function registerIdeasHandlers(): void {
       const ideas = db.prepare(`
         SELECT 
           id, title, description, status, embedding, created_at,
-          (SELECT image_path FROM generation_attempts WHERE idea_id = ideas.id ORDER BY created_at DESC LIMIT 1) as image_path 
+          COALESCE(
+            (SELECT image_path FROM generation_attempts WHERE id = ideas.selected_attempt_id),
+            (SELECT image_path FROM generation_attempts WHERE idea_id = ideas.id ORDER BY created_at DESC LIMIT 1)
+          ) as image_path 
         FROM ideas
         WHERE ignore_duplicates = 0 OR ignore_duplicates IS NULL
       `).all() as { 
