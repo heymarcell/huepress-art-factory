@@ -149,15 +149,9 @@ export function Library() {
       }
       return result.data;
     },
-    // Keep polling as backup for active states
-    refetchInterval: (query) => {
-      const state = query.state.data as { ideas: Idea[] } | undefined;
-      // If any visible ideas are in transient states, poll frequently
-      if (state?.ideas?.some((i: Idea) => i.status === 'Queued' || i.status === 'Generating')) {
-        return 1000;
-      }
-      return false;
-    },
+    // Always refetch every 2s during active generation to catch status changes
+    // This fixes the bug where filtered views (e.g., "Generated") don't update
+    refetchInterval: 2000,
   });
 
   // Dedicated query for the selected idea - fetches fresh data regardless of filters
