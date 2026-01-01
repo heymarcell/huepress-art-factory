@@ -63,7 +63,7 @@ const huepressApi = {
     /**
      * Find potential duplicates
      */
-    findDuplicates: (): Promise<IpcResponse<{ id: string; title: string; status: string; created_at: string; image_path?: string }[][]>> =>
+    findDuplicates: (): Promise<IpcResponse<{ id: string; title: string; status: string; created_at: string; image_path?: string; skill?: string }[][]>> =>
       ipcRenderer.invoke(IPC_CHANNELS.IDEAS_FIND_DUPLICATES),
 
     /**
