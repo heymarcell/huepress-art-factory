@@ -121,20 +121,31 @@ async function pollSingleBatch(
     const results = await gemini.getBatchResults(job.gemini_job_id);
     const ideaIds = JSON.parse(job.idea_ids) as string[];
     
+    if (results.length !== ideaIds.length) {
+       log.warn(`Batch result count mismatch: ${results.length} results vs ${ideaIds.length} ideas. Using index matching as best effor.`);
+    }
+
     let processedCount = 0;
-    for (const result of results) {
-      if (result.ideaId && result.imageData) {
-        try {
-          await saveGeneratedImage(db, result.ideaId, result.imageData);
-          processedCount++;
-        } catch (err) {
-          log.error(`Failed to save image for idea ${result.ideaId}:`, err);
+    
+    // Process results matching by index if needed
+    for (let i = 0; i < Math.min(results.length, ideaIds.length); i++) {
+        const result = results[i];
+        const ideaId = result.ideaId || ideaIds[i]; // Fallback to ordered ID
+        
+        if (result.imageData) {
+            try {
+              await saveGeneratedImage(db, ideaId, result.imageData);
+              processedCount++;
+            } catch (err) {
+              log.error(`Failed to save image for idea ${ideaId}:`, err);
+            }
+        } else if (result.error) {
+            log.error(`Batch generation failed for idea ${ideaId}: ${result.error}`);
+            db.prepare("UPDATE ideas SET status = 'Failed' WHERE id = ?").run(ideaId);
+        } else {
+            // No image and no error?
+            log.warn(`Batch result for idea ${ideaId} has no image and no error.`);
         }
-      } else if (result.ideaId && result.error) {
-        log.error(`Batch generation failed for idea ${result.ideaId}: ${result.error}`);
-        // Mark idea as failed
-        db.prepare("UPDATE ideas SET status = 'Failed' WHERE id = ?").run(result.ideaId);
-      }
     }
     
     // Mark batch job as completed
