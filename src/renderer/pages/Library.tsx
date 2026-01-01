@@ -120,7 +120,11 @@ export function Library() {
     queryFn: async () => {
       const result = await window.huepress.ideas.list({
         status: filters.status.length > 0 ? filters.status : undefined,
+        category: filters.category ? [filters.category] : undefined,
+        skill: filters.skill ? [filters.skill] : undefined,
         search: filters.search || undefined,
+        // Increase limit or implement pagination properly later
+        // But with specific filters, 100 is usually enough for the view
         limit: 100,
         offset: 0,
       });
