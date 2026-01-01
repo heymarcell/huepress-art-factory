@@ -706,6 +706,18 @@
   flex: 1;
 }
 
+.duplicateMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.duplicateDate {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
 .duplicateActions {
   display: flex;
   gap: 8px;

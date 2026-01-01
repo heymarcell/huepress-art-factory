@@ -844,7 +844,14 @@ export function Library() {
                         )}
                         <div className={styles.duplicateInfo}>
                           <strong>{item.title}</strong>
-                          <span>{item.status} • {new Date(item.created_at).toLocaleDateString()}</span>
+                          <div className={styles.duplicateMeta}>
+                            <span className={`${styles.statusBadge} ${styles[`status${item.status}`]}`}>
+                              {item.status}
+                            </span>
+                            <span className={styles.duplicateDate}>
+                              {new Date(item.created_at).toLocaleDateString()}
+                            </span>
+                          </div>
                         </div>
                         <div className={styles.duplicateActions}>
                           <button
