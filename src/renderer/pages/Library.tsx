@@ -86,6 +86,9 @@ export function Library() {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set());
   const newBatchIdRef = useRef<string | null>(null);
   
+  // Generation mode: 'fast' (real-time) or 'slow' (batch, 50% cheaper)
+  const [generationMode, setGenerationMode] = useState<'fast' | 'slow'>('fast');
+  
   const sortMenuRef = useRef<HTMLDivElement>(null);
   const filterMenuRef = useRef<HTMLDivElement>(null);
 
@@ -412,19 +415,41 @@ export function Library() {
     },
   });
 
-  const handleGenerateAll = () => {
+  const handleGenerateAll = async () => {
     if (importedCount === 0) {
       alert('No imported ideas to generate.');
       return;
     }
     
+    const modeLabel = generationMode === 'fast' ? 'real-time' : 'batch (50% cheaper, up to 24h)';
     const confirmed = confirm(
       `Start generating ${importedCount} imported idea${importedCount !== 1 ? 's' : ''}?\n\n` +
+      `Mode: ${modeLabel}\n\n` +
       `This will queue all ideas with "Imported" status.`
     );
     
     if (confirmed) {
-      generateAllMutation.mutate();
+      if (generationMode === 'slow') {
+        // Use batch API for slow mode
+        try {
+          const result = await window.huepress.ideas.list({ status: ['Imported'], limit: 1000 });
+          if (!result.success) throw new Error(result.error);
+          
+          const ids = result.data.ideas.map((i: { id: string }) => i.id);
+          if (ids.length === 0) throw new Error('No imported ideas to generate');
+          
+          const batchResult = await window.huepress.batch.submit(ids);
+          if (!batchResult.success) throw new Error(batchResult.error);
+          
+          alert(`Submitted ${ids.length} ideas to batch queue.\n\nBatch ID: ${batchResult.data.batchJobId}\n\nResults will appear when batch completes (up to 24h).`);
+          queryClient.invalidateQueries({ queryKey: ['project-info'] });
+          queryClient.invalidateQueries({ queryKey: ['ideas'] });
+        } catch (err) {
+          alert(`Batch submission failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        }
+      } else {
+        generateAllMutation.mutate();
+      }
     }
   };
 
@@ -660,11 +685,27 @@ export function Library() {
                 Select
               </button>
               
+              {/* Generation Mode Toggle */}
+              <div className={styles.modeToggle} title={generationMode === 'fast' ? 'Real-time streaming (~15s/image)' : 'Batch mode: 50% cheaper, up to 24h turnaround'}>
+                <button
+                  onClick={() => setGenerationMode('fast')}
+                  className={`${styles.modeBtn} ${generationMode === 'fast' ? styles.modeBtnActive : ''}`}
+                >
+                  ⚡ Fast
+                </button>
+                <button
+                  onClick={() => setGenerationMode('slow')}
+                  className={`${styles.modeBtn} ${generationMode === 'slow' ? styles.modeBtnActive : ''}`}
+                >
+                  💰 Slow
+                </button>
+              </div>
+              
               <button
                 onClick={handleGenerateAll}
                 className={styles.btnSecondary}
                 disabled={importedCount === 0 || generateAllMutation.isPending}
-                title={importedCount > 0 ? `Generate ${importedCount} imported ideas` : "No pending imports"}
+                title={importedCount > 0 ? `Generate ${importedCount} imported ideas (${generationMode} mode)` : "No pending imports"}
               >
                 <Paintbrush size={14} />
                 Generate {importedCount > 0 ? `(${importedCount})` : ''}
