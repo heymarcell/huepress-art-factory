@@ -767,7 +767,7 @@ export function Library() {
         </div>
 
         {/* Duplicates Button Group */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0' }}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
           <button
             className={styles.toolbarBtn}
             onClick={checkForDuplicates}
@@ -792,7 +792,12 @@ export function Library() {
               }
             }}
             title="Reset accepted duplicates"
-            style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0, padding: '6px 8px' }}
+            style={{ 
+              borderTopLeftRadius: 0, 
+              borderBottomLeftRadius: 0, 
+              marginLeft: '-1px',
+              padding: '6px 8px' 
+            }}
           >
             <RotateCcw size={14} />
           </button>
