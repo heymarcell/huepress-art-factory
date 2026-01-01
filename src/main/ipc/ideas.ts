@@ -584,7 +584,9 @@ export function registerIdeasHandlers(): void {
           title: ideaA.title,
           status: ideaA.status,
           created_at: ideaA.created_at,
-          image_path: ideaA.image_path
+          image_path: ideaA.image_path,
+          skill: ideaA.skill,
+          category: ideaA.category
         }];
         processed.add(ideaA.id);
 
@@ -613,7 +615,9 @@ export function registerIdeasHandlers(): void {
                 title: ideaB.title,
                 status: ideaB.status,
                 created_at: ideaB.created_at,
-                image_path: ideaB.image_path
+                image_path: ideaB.image_path,
+                skill: ideaB.skill,
+                category: ideaB.category
              });
              processed.add(ideaB.id);
            }
