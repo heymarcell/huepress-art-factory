@@ -721,6 +721,21 @@
   color: var(--color-error);
 }
 
+.omitBtn {
+  padding: 8px;
+  color: var(--color-text-muted);
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.omitBtn:hover {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-warning);
+}
+
 .spin {
   animation: spin 1s linear infinite;
 }

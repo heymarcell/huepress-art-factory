@@ -18,6 +18,7 @@ import {
   ArrowDown,
   Filter,
   Copy,
+  Ban,
 } from 'lucide-react';
 import type { Idea, IdeaStatus } from '../../shared/schemas';
 import { IdeaDetail } from '../components/IdeaDetail';
@@ -822,17 +823,15 @@ export function Library() {
                           <span>{item.status} • {new Date(item.created_at).toLocaleDateString()}</span>
                         </div>
                         <button
-                          className={styles.deleteBtn}
+                          className={styles.omitBtn}
                           onClick={() => {
-                             if(confirm('Are you sure you want to delete this duplicate?')) {
-                               deleteMutation.mutate(item.id);
-                               // Optimistically remove from list
-                               setDuplicates(prev => prev.map(g => g.filter(i => i.id !== item.id)).filter(g => g.length > 1));
-                             }
+                             batchStatusMutation.mutate({ ids: [item.id], status: 'Omitted' });
+                             // Optimistically remove from list
+                             setDuplicates(prev => prev.map(g => g.filter(i => i.id !== item.id)).filter(g => g.length > 1));
                           }}
-                          title="Delete this item"
+                          title="Omit this item (mark as Omitted)"
                         >
-                          <Trash2 size={16} />
+                          <Ban size={16} />
                         </button>
                       </div>
                     ))}
