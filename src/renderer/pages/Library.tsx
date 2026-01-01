@@ -21,6 +21,7 @@ import {
   Ban,
   Check,
   Paintbrush,
+  Download,
 } from 'lucide-react';
 import type { Idea, IdeaStatus } from '../../shared/schemas';
 import { IdeaDetail } from '../components/IdeaDetail';
@@ -684,6 +685,20 @@ export function Library() {
                 <Plus size={14} />
                 Import
               </Link>
+
+              <button
+                onClick={async () => {
+                  const result = await window.huepress.ideas.exportJson();
+                  if (result.success && !result.data.canceled) {
+                    alert(`Exported ${result.data.exported} ideas to:\n${result.data.path}`);
+                  }
+                }}
+                className={styles.btnSecondary}
+                title="Export all ideas as JSON"
+              >
+                <Download size={14} />
+                Export
+              </button>
             </>
           ) : (
             <>

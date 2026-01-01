@@ -92,6 +92,12 @@ const huepressApi = {
      */
     setVersion: (ideaId: string, attemptId: string): Promise<IpcResponse<{ updated: boolean }>> =>
       ipcRenderer.invoke(IPC_CHANNELS.IDEAS_SET_VERSION, { ideaId, attemptId }),
+
+    /**
+     * Export all ideas as JSON file
+     */
+    exportJson: (): Promise<IpcResponse<{ exported: number; path?: string; canceled?: boolean }>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.IDEAS_EXPORT_JSON),
   },
 
   // =========================================================================

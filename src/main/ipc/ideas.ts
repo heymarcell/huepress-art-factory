@@ -654,4 +654,55 @@ export function registerIdeasHandlers(): void {
       return errorResponse(error instanceof Error ? error.message : 'Unknown error');
     }
   });
+
+  // Export all ideas as JSON
+  ipcMain.handle(IPC_CHANNELS.IDEAS_EXPORT_JSON, async () => {
+    try {
+      const db = getDatabase();
+      
+      // Get all ideas with all their fields
+      const ideas = db.prepare(`
+        SELECT 
+          id, batch_id, title, description, category, skill, tags,
+          extended_description, fun_facts, suggested_activities,
+          coloring_tips, therapeutic_benefits, meta_keywords,
+          status, notes, created_at, updated_at
+        FROM ideas
+        ORDER BY created_at DESC
+      `).all() as Record<string, unknown>[];
+      
+      // Parse JSON fields back to arrays/objects
+      const formattedIdeas = ideas.map((idea: Record<string, unknown>) => ({
+        ...idea,
+        tags: idea.tags ? JSON.parse(idea.tags as string) : [],
+        fun_facts: idea.fun_facts ? JSON.parse(idea.fun_facts as string) : [],
+        suggested_activities: idea.suggested_activities ? JSON.parse(idea.suggested_activities as string) : [],
+        coloring_tips: idea.coloring_tips ? JSON.parse(idea.coloring_tips as string) : [],
+        therapeutic_benefits: idea.therapeutic_benefits ? JSON.parse(idea.therapeutic_benefits as string) : [],
+        meta_keywords: idea.meta_keywords ? JSON.parse(idea.meta_keywords as string) : [],
+      }));
+      
+      // Show save dialog
+      const { dialog } = await import('electron');
+      const result = await dialog.showSaveDialog({
+        title: 'Export Ideas as JSON',
+        defaultPath: `huepress-export-${new Date().toISOString().slice(0, 10)}.json`,
+        filters: [{ name: 'JSON Files', extensions: ['json'] }],
+      });
+      
+      if (result.canceled || !result.filePath) {
+        return successResponse({ exported: 0, canceled: true });
+      }
+      
+      // Write to file
+      const fs = await import('fs/promises');
+      await fs.writeFile(result.filePath, JSON.stringify(formattedIdeas, null, 2), 'utf-8');
+      
+      log.info(`Exported ${formattedIdeas.length} ideas to ${result.filePath}`);
+      return successResponse({ exported: formattedIdeas.length, path: result.filePath });
+    } catch (error) {
+      log.error('Error exporting ideas:', error);
+      return errorResponse(error instanceof Error ? error.message : 'Unknown error');
+    }
+  });
 }
