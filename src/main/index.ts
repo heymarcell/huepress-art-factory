@@ -108,6 +108,10 @@ const initialize = async (): Promise<void> => {
     await initializeDatabase();
     log.info('Database initialized');
 
+    // Initialize job queue (cleanup stale jobs from previous session)
+    const { jobQueue } = await import('./services/queue');
+    jobQueue.init();
+
     // Register IPC handlers
     registerIpcHandlers();
     log.info('IPC handlers registered');

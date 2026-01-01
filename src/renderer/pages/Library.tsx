@@ -134,7 +134,16 @@ export function Library() {
       return result.data;
     },
     enabled: !!selectedIdea?.id,
-    refetchInterval: selectedIdea?.status === 'Generating' || selectedIdea?.status === 'Queued' ? 1000 : false,
+    staleTime: 0, // Always consider data stale to ensure fresh fetch
+    refetchOnMount: 'always', // Always refetch when query becomes enabled
+    refetchInterval: (query) => {
+      const idea = query.state.data as Idea | null;
+      // Poll while generating or queued
+      if (idea?.status === 'Generating' || idea?.status === 'Queued') {
+        return 1000;
+      }
+      return false;
+    },
   });
 
   // Get unique categories from data

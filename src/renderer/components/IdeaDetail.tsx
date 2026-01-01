@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { X, Palette, Check, Tag, Lightbulb, Heart, FileText, Trash2, Image as ImageIcon, AlertCircle, Pencil } from 'lucide-react';
 import type { Idea, GenerationAttempt } from '../../shared/schemas';
 import styles from './IdeaDetail.module.css';
@@ -32,6 +32,7 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
   const [showEditModal, setShowEditModal] = useState(false);
   const [editInstruction, setEditInstruction] = useState('');
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  const queryClient = useQueryClient();
 
   // Fetch attempts (history)
   const { data: attempts, refetch: refetchAttempts } = useQuery<GenerationAttempt[]>({
@@ -603,6 +604,9 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
                   setIsSubmittingEdit(true);
                   try {
                     await window.huepress.jobs.edit(idea.id, editInstruction.trim());
+                    // Invalidate queries to refresh UI immediately
+                    queryClient.invalidateQueries({ queryKey: ['ideas'] });
+                    queryClient.invalidateQueries({ queryKey: ['idea', idea.id] });
                     setShowEditModal(false);
                     setEditInstruction('');
                   } catch (err) {

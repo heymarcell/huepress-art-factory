@@ -14,10 +14,20 @@ export class JobQueue {
   private running = new Set<string>(); // ideaIds
   private storage = new StorageService();
   private editQueue: { ideaId: string; instruction: string }[] = [];
+  private initialized = false;
   
   constructor() {
-    // Clean up stale jobs from previous session on startup
-    // Jobs left in Queued/Generating state won't resume, so mark them Failed
+    // Note: Don't call cleanup here - database isn't ready yet
+    // Call init() after database initialization
+  }
+
+  /**
+   * Initialize the queue after database is ready
+   * Must be called after initializeDatabase()
+   */
+  init() {
+    if (this.initialized) return;
+    this.initialized = true;
     this.cleanupStaleJobs();
   }
 
