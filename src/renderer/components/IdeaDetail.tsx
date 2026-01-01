@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X, Palette, Check, Tag, Lightbulb, Heart, FileText, Trash2, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { X, Palette, Check, Tag, Lightbulb, Heart, FileText, Trash2, Image as ImageIcon, AlertCircle, Pencil } from 'lucide-react';
 import type { Idea, GenerationAttempt } from '../../shared/schemas';
 import styles from './IdeaDetail.module.css';
 
@@ -29,6 +29,9 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
   const [logs, setLogs] = useState<string[]>([]);
   const [now, setNow] = useState(Date.now());
   const [showLightbox, setShowLightbox] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editInstruction, setEditInstruction] = useState('');
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
 
   // Fetch attempts (history)
   const { data: attempts, refetch: refetchAttempts } = useQuery<GenerationAttempt[]>({
@@ -501,6 +504,22 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
                 <Trash2 size={14} />
               </button>
             )}
+            {/* Edit Button - Only show when image exists */}
+            {idea.image_path && (
+              <button 
+                className={styles.actionButton} 
+                onClick={() => setShowEditModal(true)}
+                disabled={
+                  idea.status === 'Generating' || 
+                  idea.status === 'Queued' ||
+                  idea.status === 'Approved'
+                }
+                title="Edit image with text instruction"
+              >
+                <Pencil size={14} />
+                Edit
+              </button>
+            )}
           </footer>
         </div>
       </div>
@@ -546,6 +565,61 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
            </button>
         </div>
       )}
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div className={styles.overlay} onClick={() => setShowEditModal(false)}>
+          <div className={styles.editModal} onClick={(e) => e.stopPropagation()}>
+            <header className={styles.editModalHeader}>
+              <h3>Edit Image</h3>
+              <button className={styles.closeButton} onClick={() => setShowEditModal(false)}>
+                <X size={18} />
+              </button>
+            </header>
+            <div className={styles.editModalBody}>
+              <p className={styles.editHint}>
+                Describe what changes you want to make to the current image:
+              </p>
+              <textarea
+                className={styles.editTextarea}
+                value={editInstruction}
+                onChange={(e) => setEditInstruction(e.target.value)}
+                placeholder="e.g., Make the eyes bigger, remove the hat, add a bow on the tail..."
+                rows={4}
+                autoFocus
+              />
+            </div>
+            <footer className={styles.editModalFooter}>
+              <button 
+                className={styles.actionButton}
+                onClick={() => setShowEditModal(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                className={`${styles.actionButton} ${styles.approveButton}`}
+                onClick={async () => {
+                  if (!editInstruction.trim()) return;
+                  setIsSubmittingEdit(true);
+                  try {
+                    await window.huepress.jobs.edit(idea.id, editInstruction.trim());
+                    setShowEditModal(false);
+                    setEditInstruction('');
+                  } catch (err) {
+                    console.error('Edit failed:', err);
+                  } finally {
+                    setIsSubmittingEdit(false);
+                  }
+                }}
+                disabled={!editInstruction.trim() || isSubmittingEdit}
+              >
+                {isSubmittingEdit ? 'Submitting...' : 'Apply Edit'}
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
     </>
   );
 }
+

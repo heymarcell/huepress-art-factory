@@ -141,6 +141,12 @@ const huepressApi = {
       ipcRenderer.on(IPC_CHANNELS.JOBS_PROGRESS, handler);
       return () => ipcRenderer.removeListener(IPC_CHANNELS.JOBS_PROGRESS, handler);
     },
+
+    /**
+     * Edit an existing image with a text instruction
+     */
+    edit: (ideaId: string, instruction: string): Promise<IpcResponse<{ queued: boolean }>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.GEN_MODIFY, { ideaId, instruction }),
   },
 
   // =========================================================================

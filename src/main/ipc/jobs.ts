@@ -5,7 +5,7 @@ import { jobQueue } from '../services/queue';
 
 /**
  * Jobs IPC handlers
- * Implements M2 generation pipeline.
+ * Implements M2 generation pipeline + M3 edit functionality.
  */
 
 export function registerJobsHandlers(): void {
@@ -80,5 +80,31 @@ export function registerJobsHandlers(): void {
     }
   });
 
-  log.info('[Jobs] Handlers registered (M2 implementation)');
+  // M3: Edit an existing image with a text instruction
+  ipcMain.handle(IPC_CHANNELS.GEN_MODIFY, async (_event, payload: unknown) => {
+    try {
+      const { ideaId, instruction } = payload as { ideaId: string; instruction: string };
+      
+      if (!ideaId || typeof ideaId !== 'string') {
+        return errorResponse('ideaId is required');
+      }
+      if (!instruction || typeof instruction !== 'string') {
+        return errorResponse('instruction is required');
+      }
+
+      // Enqueue as an edit job
+      await jobQueue.addEdit(ideaId, instruction);
+      
+      return successResponse({
+        queued: true,
+        message: 'Edit job enqueued',
+      });
+    } catch (error) {
+      log.error('Error enqueueing edit job:', error);
+      return errorResponse(error instanceof Error ? error.message : 'Unknown error');
+    }
+  });
+
+  log.info('[Jobs] Handlers registered (M2 + M3 implementation)');
 }
+

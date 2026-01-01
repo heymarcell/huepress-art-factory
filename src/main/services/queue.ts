@@ -13,10 +13,35 @@ import type { Idea } from '../../shared/schemas';
 export class JobQueue {
   private running = new Set<string>(); // ideaIds
   private storage = new StorageService();
+  private editQueue: { ideaId: string; instruction: string }[] = [];
   
   constructor() {
-    // Attempt to resume jobs on startup? 
-    // Maybe later. For now, user manually triggers.
+    // Clean up stale jobs from previous session on startup
+    // Jobs left in Queued/Generating state won't resume, so mark them Failed
+    this.cleanupStaleJobs();
+  }
+
+  /**
+   * Reset any jobs stuck in Queued or Generating state to Failed
+   * This runs on app startup to clean up interrupted jobs
+   */
+  private cleanupStaleJobs() {
+    try {
+      const db = getDatabase();
+      const now = new Date().toISOString();
+      
+      const result = db.prepare(`
+        UPDATE ideas 
+        SET status = 'Failed', updated_at = ? 
+        WHERE status IN ('Queued', 'Generating')
+      `).run(now);
+      
+      if (result.changes > 0) {
+        log.info(`[JobQueue] Cleaned up ${result.changes} stale jobs from previous session`);
+      }
+    } catch (e) {
+      log.error('[JobQueue] Failed to cleanup stale jobs:', e);
+    }
   }
 
   async getStats() {
@@ -55,6 +80,23 @@ export class JobQueue {
     this.process();
   }
 
+  /**
+   * M3: Add an edit job - edit existing image with text instruction
+   */
+  async addEdit(ideaId: string, instruction: string) {
+    const db = getDatabase();
+    const now = new Date().toISOString();
+    
+    // Mark as Queued
+    db.prepare('UPDATE ideas SET status = ?, updated_at = ? WHERE id = ?').run('Queued', now, ideaId);
+    
+    // Add to edit queue with instruction
+    this.editQueue.push({ ideaId, instruction });
+    
+    // Trigger processing
+    this.process();
+  }
+
   async cancel(ideaId: string) {
     if (this.running.has(ideaId)) {
         // We can't easily cancel an inflight Fetch/Promise in JS without AbortController support in specific service
@@ -66,6 +108,10 @@ export class JobQueue {
     const db = getDatabase();
     db.prepare('UPDATE ideas SET status = ?, updated_at = ? WHERE id = ?').run('NeedsAttention', new Date().toISOString(), ideaId);
     this.running.delete(ideaId);
+    
+    // Remove from edit queue if present
+    this.editQueue = this.editQueue.filter(e => e.ideaId !== ideaId);
+    
     this.process();
   }
 
@@ -80,16 +126,28 @@ export class JobQueue {
     const slots = concurrency - this.running.size;
     const db = getDatabase();
 
-    // Find next Queued items
-    // Using simple prepare without explicit generics to rely on inference or looser typing
-    // as better-sqlite3 generic typing can be strict about parameter tuples
+    // First, check edit queue
+    while (this.editQueue.length > 0 && this.running.size < concurrency) {
+      const editJob = this.editQueue.shift()!;
+      const idea = db.prepare('SELECT * FROM ideas WHERE id = ?').get(editJob.ideaId) as Idea | undefined;
+      if (idea) {
+        this.runEditJob(idea, editJob.instruction);
+      }
+    }
+
+    // Then, find next Queued items for generation (not in edit queue)
+    const remainingSlots = concurrency - this.running.size;
+    if (remainingSlots <= 0) return;
+
     const nextIdeas = db.prepare(`
       SELECT * FROM ideas WHERE status = 'Queued' ORDER BY updated_at ASC LIMIT ?
-    `).all(slots) as Idea[];
+    `).all(remainingSlots) as Idea[];
 
     if (nextIdeas.length === 0) return;
 
     for (const idea of nextIdeas) {
+      // Skip if this idea is in edit queue (will be handled separately)
+      if (this.editQueue.some(e => e.ideaId === idea.id)) continue;
       this.runJob(idea);
     }
   }
@@ -212,7 +270,117 @@ export class JobQueue {
       this.process(); // Pick next
     }
   }
+
+  /**
+   * M3: Run an edit job - takes existing image and applies text instruction
+   */
+  private async runEditJob(idea: Idea, instruction: string) {
+    this.running.add(idea.id);
+    const db = getDatabase();
+
+    try {
+      // Update status to Generating
+      db.prepare('UPDATE ideas SET status = ? WHERE id = ?').run('Generating', idea.id);
+
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        throw new Error('API Key missing');
+      }
+
+      // Get current image path
+      let sourceImagePath: string | null = null;
+      if (idea.selected_attempt_id) {
+        const attempt = db.prepare('SELECT image_path FROM generation_attempts WHERE id = ?').get(idea.selected_attempt_id) as { image_path: string } | undefined;
+        sourceImagePath = attempt?.image_path || null;
+      }
+
+      if (!sourceImagePath || !fs.existsSync(sourceImagePath)) {
+        throw new Error('No source image found for editing');
+      }
+
+      const gemini = new GeminiService(apiKey);
+      const sourceImage = fs.readFileSync(sourceImagePath);
+      
+      // Construct edit prompt
+      const editPayload = JSON.stringify({
+        title: idea.title,
+        skill: idea.skill,
+        instruction: instruction
+      }) + `\n\nEDIT INSTRUCTION: ${instruction}\n\nApply this modification to the provided image while maintaining the coloring book style (black outlines only, no fills, no shading).`;
+
+      const start = Date.now();
+      
+      // Progress handler
+      const handleProgress = (text: string) => {
+        BrowserWindow.getAllWindows().forEach(win => {
+          win.webContents.send('jobs:progress', {
+             jobId: idea.id,
+             ideaId: idea.id,
+             status: 'running',
+             message: `Editing: ${text.substring(0, 50)}...`
+          });
+        });
+      };
+
+      // Call with source image as template
+      const imageBuffer = await gemini.generateImage(editPayload, handleProgress, [sourceImage]);
+      const duration = Date.now() - start;
+
+      // Save Image
+      const { path: imagePath, sha256 } = await this.storage.saveImage(imageBuffer, idea.id, idea.batch_id);
+
+      // Record Attempt
+      const attemptId = ulid();
+      db.prepare(`
+        INSERT INTO generation_attempts (
+          id, idea_id, type, prompt_template_version, request, response_meta, image_path, image_sha256, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        attemptId,
+        idea.id,
+        'edit', // Type is 'edit' for modifications
+        'v2-edit-instruction',
+        editPayload,
+        JSON.stringify({ duration, model: 'gemini-3-pro-image-preview', instruction }),
+        imagePath,
+        sha256,
+        new Date().toISOString()
+      );
+
+      // Update Idea Status - auto-select the new version
+      const now = new Date().toISOString();
+      db.prepare('UPDATE ideas SET status = ?, selected_attempt_id = ?, updated_at = ? WHERE id = ?').run('Generated', attemptId, now, idea.id);
+
+      log.info(`[Edit Job ${idea.id}] Completed in ${duration}ms`);
+
+    } catch (error: any) {
+      log.error(`Edit job failed for idea ${idea.id}:`, error);
+      
+      // Record Failed Attempt
+      const attemptId = ulid();
+      db.prepare(`
+        INSERT INTO generation_attempts (
+          id, idea_id, type, prompt_template_version, request, response_meta, qc_report, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        attemptId,
+        idea.id,
+        'edit',
+        'v2-edit-instruction',
+        instruction,
+        JSON.stringify({ error: error.message }),
+        JSON.stringify({ passed: false, error: error.message }),
+        new Date().toISOString()
+      );
+      
+      db.prepare('UPDATE ideas SET status = ?, updated_at = ? WHERE id = ?').run('Failed', new Date().toISOString(), idea.id);
+    } finally {
+      this.running.delete(idea.id);
+      this.process(); // Pick next
+    }
+  }
 }
 
 // Singleton instance
 export const jobQueue = new JobQueue();
+

@@ -83,10 +83,14 @@ export function Library() {
   useEffect(() => {
     if (!window.huepress?.jobs?.onProgress) return;
 
-    const unsubscribe = window.huepress.jobs.onProgress((data) => {
+    const unsubscribe = window.huepress.jobs.onProgress((progressData) => {
       // Invalidate queries when we see progress updates
       // This ensures the list reflects state changes (Queued -> Generating -> Generated/Failed)
       queryClient.invalidateQueries({ queryKey: ['ideas'] });
+      // Also invalidate the specific idea query if it matches the current selection
+      if (progressData?.ideaId) {
+        queryClient.invalidateQueries({ queryKey: ['idea', progressData.ideaId] });
+      }
     });
 
     return () => {
@@ -117,6 +121,20 @@ export function Library() {
       }
       return false;
     },
+  });
+
+  // Dedicated query for the selected idea - fetches fresh data regardless of filters
+  // This prevents stale data when the idea's status changes and it's filtered out of the main list
+  const { data: selectedIdeaFresh } = useQuery({
+    queryKey: ['idea', selectedIdea?.id],
+    queryFn: async () => {
+      if (!selectedIdea?.id) return null;
+      const result = await window.huepress.ideas.getById(selectedIdea.id);
+      if (!result.success) return null;
+      return result.data;
+    },
+    enabled: !!selectedIdea?.id,
+    refetchInterval: selectedIdea?.status === 'Generating' || selectedIdea?.status === 'Queued' ? 1000 : false,
   });
 
   // Get unique categories from data
@@ -165,8 +183,9 @@ export function Library() {
       }
       return result.data;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['ideas'] });
+      queryClient.invalidateQueries({ queryKey: ['idea', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['project-info'] });
     },
   });
@@ -231,8 +250,9 @@ export function Library() {
       }
       return result.data;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['ideas'] });
+      queryClient.invalidateQueries({ queryKey: ['idea', variables] });
       queryClient.invalidateQueries({ queryKey: ['project-info'] });
     },
   });
@@ -261,8 +281,9 @@ export function Library() {
       }
       return result.data;
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['ideas'] });
+      queryClient.invalidateQueries({ queryKey: ['idea', variables.ideaId] });
     },
   });
 
@@ -279,10 +300,16 @@ export function Library() {
   const handleStatusChange = (newStatus: IdeaStatus) => {
     if (selectedIdea) {
       updateStatusMutation.mutate({ id: selectedIdea.id, status: newStatus });
-      // Note: We do NOT optimistically update selectedIdea here.
-      // The query refetch will provide fresh data including the correct selected_attempt_id.
-      // Optimistic updates would use a stale selectedIdea captured on modal open,
-      // causing the version to jump incorrectly after changing versions.
+      
+      // Optimistically update selectedIdea with the new status
+      // Use selectedIdeaFresh (from dedicated query) which has correct data regardless of filters
+      const freshIdea = selectedIdeaFresh || data?.ideas?.find((i: Idea) => i.id === selectedIdea.id);
+      if (freshIdea) {
+        setSelectedIdea({ ...freshIdea, status: newStatus, updated_at: new Date().toISOString() });
+      } else {
+        // Last fallback: just update status on selectedIdea
+        setSelectedIdea({ ...selectedIdea, status: newStatus, updated_at: new Date().toISOString() });
+      }
     }
   };
 
@@ -711,7 +738,7 @@ export function Library() {
       {/* Detail Panel */}
       {selectedIdea && (
         <IdeaDetail
-          idea={data?.ideas?.find((i: Idea) => i.id === selectedIdea.id) || selectedIdea}
+          idea={selectedIdeaFresh || data?.ideas?.find((i: Idea) => i.id === selectedIdea.id) || selectedIdea}
           onClose={closeDetail}
           onStatusChange={handleStatusChange}
           onDelete={() => handleDelete(selectedIdea.id)}
