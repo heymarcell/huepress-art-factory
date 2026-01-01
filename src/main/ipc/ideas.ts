@@ -608,8 +608,14 @@ export function registerIdeasHandlers(): void {
 
            const similarity = cosineSimilarity(vecA, vecB);
            
-           // Threshold 0.82 is usually appropriate for Sentence Transformers semantic match
-           if (similarity > 0.82) {
+           // Log near-misses for debugging (0.6-0.75 range)
+           if (similarity > 0.6 && similarity <= 0.75) {
+             log.info(`Near-miss similarity: ${similarity.toFixed(3)} between "${ideaA.title}" and "${ideaB.title}"`);
+           }
+           
+           // Threshold 0.75 to catch semantic matches with varied wording
+           if (similarity > 0.75) {
+             log.info(`Duplicate found: ${similarity.toFixed(3)} - "${ideaA.title}" ↔ "${ideaB.title}"`);
              currentGroup.push({
                 id: ideaB.id,
                 batch_id: ideaB.batch_id,
