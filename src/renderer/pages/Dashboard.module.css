@@ -83,7 +83,7 @@
 /* Stats Grid */
 .statsGrid {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--space-3);
 }
 
@@ -96,6 +96,7 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   transition: border-color var(--transition-fast);
+  text-align: left;
 }
 
 .statCard:hover {
@@ -108,6 +109,8 @@
   justify-content: center;
   width: 36px;
   height: 36px;
+  min-width: 36px;
+  flex-shrink: 0;
   background-color: var(--color-bg-tertiary);
   border-radius: var(--radius-sm);
   color: var(--color-text-secondary);
@@ -116,17 +119,23 @@
 .statInfo {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-width: 0;
 }
 
 .statValue {
   font-size: var(--text-lg);
   font-weight: 600;
   color: var(--color-text-primary);
+  line-height: 1.2;
 }
 
 .statLabel {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Status colors */
@@ -244,4 +253,18 @@
 
 .dangerCard .actionContent strong {
   color: var(--color-error);
+}
+
+/* Success card (export button) */
+.successCard {
+  border-color: var(--color-success);
+}
+
+.successCard:hover {
+  background-color: rgba(34, 197, 94, 0.1);
+  border-color: var(--color-success);
+}
+
+.successCard .actionContent strong {
+  color: var(--color-success);
 }

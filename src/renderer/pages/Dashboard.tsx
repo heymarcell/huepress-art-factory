@@ -12,6 +12,8 @@ import {
   FileCheck,
   Package,
   StopCircle,
+  XCircle,
+  Ban,
 } from 'lucide-react';
 import styles from './Dashboard.module.css';
 
@@ -78,12 +80,15 @@ export function Dashboard() {
   const hasActiveJobs = queuedCount > 0 || generatingCount > 0;
 
   // Status cards with their corresponding filter values
+  const approvedCount = byStatus.Approved || 0;
   const statusCards = [
     { label: 'Imported', value: byStatus.Imported || 0, icon: Download, color: 'info', filter: 'Imported' },
     { label: 'Queued', value: byStatus.Queued || 0, icon: Clock, color: 'warning', filter: 'Queued' },
     { label: 'Generated', value: byStatus.Generated || 0, icon: CheckCircle, color: 'success', filter: 'Generated' },
     { label: 'Needs Review', value: byStatus.NeedsAttention || 0, icon: AlertCircle, color: 'error', filter: 'NeedsAttention' },
+    { label: 'Failed', value: byStatus.Failed || 0, icon: XCircle, color: 'error', filter: 'Failed' },
     { label: 'Approved', value: byStatus.Approved || 0, icon: FileCheck, color: 'accent', filter: 'Approved' },
+    { label: 'Omitted', value: byStatus.Omitted || 0, icon: Ban, color: 'muted', filter: 'Omitted' },
     { label: 'Exported', value: byStatus.Exported || 0, icon: Package, color: 'muted', filter: 'Exported' },
   ];
 
@@ -206,6 +211,16 @@ export function Dashboard() {
               <span>{hasActiveJobs ? `${queuedCount + generatingCount} active` : 'No active jobs'}</span>
             </div>
           </button>
+          <Link 
+            to="/library?status=Approved"
+            className={`${styles.actionCard} ${approvedCount > 0 ? styles.successCard : ''}`}
+          >
+            <Package size={20} strokeWidth={1.5} />
+            <div className={styles.actionContent}>
+              <strong>Export</strong>
+              <span>{approvedCount > 0 ? `${approvedCount} ready to export` : 'No approved ideas'}</span>
+            </div>
+          </Link>
         </div>
       </section>
 

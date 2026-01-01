@@ -465,6 +465,83 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
             {selectedAttempt?.qc_report && (() => {
               try {
                 const qc = JSON.parse(selectedAttempt.qc_report);
+                
+                // Parse error into structured format for clean display
+                interface ErrorInfo {
+                  title: string;
+                  description?: string;
+                  action?: string;
+                }
+                
+                const parseError = (error: string): ErrorInfo => {
+                  // Default fallback
+                  let info: ErrorInfo = { title: 'Generation failed', description: error };
+                  
+                  try {
+                    // Try to extract JSON from error
+                    const jsonMatch = error.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                      const parsed = JSON.parse(jsonMatch[0]);
+                      
+                      // Handle Gemini API nested errors
+                      if (parsed.error) {
+                        const code = parsed.error.code;
+                        const status = parsed.error.status;
+                        let message = parsed.error.message || '';
+                        
+                        // Try to parse nested message JSON
+                        try {
+                          const inner = JSON.parse(message);
+                          if (inner.error) {
+                            message = inner.error.message || message;
+                          }
+                        } catch { /* not nested JSON */ }
+                        
+                        // Extract key info based on error type
+                        if (code === 429 || status === 'RESOURCE_EXHAUSTED') {
+                          info = {
+                            title: 'Rate limit exceeded',
+                            description: 'Your API quota has been exhausted.',
+                            action: 'Wait for quota reset or upgrade your plan at ai.google.dev'
+                          };
+                          // Extract retry time if present
+                          const retryMatch = message.match(/retry in ([\d.]+s)/i);
+                          if (retryMatch) {
+                            info.description = `Quota exhausted. Retry available in ${retryMatch[1]}.`;
+                          }
+                        } else if (code === 400) {
+                          info = {
+                            title: 'Invalid request',
+                            description: message.split('.')[0] || 'The request was malformed.',
+                          };
+                        } else if (code === 401 || code === 403) {
+                          info = {
+                            title: 'Authentication failed',
+                            description: 'Check your API key in Settings.',
+                            action: 'Go to Settings and verify your Gemini API key'
+                          };
+                        } else if (code === 500 || code === 503) {
+                          info = {
+                            title: 'Server error',
+                            description: 'Gemini API is temporarily unavailable.',
+                            action: 'Try again in a few minutes'
+                          };
+                        } else {
+                          // Generic API error
+                          info = {
+                            title: status || `Error ${code}`,
+                            description: message.split('.')[0].substring(0, 100) || 'An unexpected error occurred.',
+                          };
+                        }
+                      }
+                    }
+                  } catch { /* parsing failed, use default */ }
+                  
+                  return info;
+                };
+
+                const errorInfo = qc.error ? parseError(qc.error) : null;
+                
                 return (
                   <section className={styles.section}>
                     <div className={styles.sectionHeader}>
@@ -475,8 +552,16 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
                       <div className={`${styles.qcStatus} ${qc.passed ? styles.qcPassed : styles.qcFailed}`}>
                         {qc.passed ? '✓ Passed' : '✗ Failed'}
                       </div>
-                      {qc.error && (
-                        <div className={styles.qcError}>{qc.error}</div>
+                      {errorInfo && (
+                        <div className={styles.qcErrorCard}>
+                          <div className={styles.qcErrorTitle}>{errorInfo.title}</div>
+                          {errorInfo.description && (
+                            <div className={styles.qcErrorDesc}>{errorInfo.description}</div>
+                          )}
+                          {errorInfo.action && (
+                            <div className={styles.qcErrorAction}>💡 {errorInfo.action}</div>
+                          )}
+                        </div>
                       )}
                       {qc.warnings && qc.warnings.length > 0 && (
                         <ul className={styles.qcWarnings}>
