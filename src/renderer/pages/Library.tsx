@@ -46,7 +46,7 @@ type SortOrder = 'asc' | 'desc';
 
 export function Library() {
   const queryClient = useQueryClient();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const location = useLocation();
   
   // Refs for throttling updates
@@ -229,17 +229,6 @@ export function Library() {
       queryClient.invalidateQueries({ queryKey: ['ideas'] });
       queryClient.invalidateQueries({ queryKey: ['idea', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['project-info'] });
-    },
-  });
-
-  const updateFieldsMutation = useMutation({
-    mutationFn: async ({ id, fields }: { id: string; fields: any }) => {
-      const result = await window.huepress.ideas.updateFields(id, fields);
-      if (!result.success) throw new Error(result.error);
-      return result.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ideas'] });
     },
   });
 

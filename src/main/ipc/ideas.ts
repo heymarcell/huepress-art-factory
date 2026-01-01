@@ -645,22 +645,6 @@ export function registerIdeasHandlers(): void {
     }
   });
 
-  // Reset ignore_duplicates flags for all ideas
-  ipcMain.handle(IPC_CHANNELS.IDEAS_RESET_IGNORE_DUPLICATES, async () => {
-    try {
-      const db = getDatabase();
-      const result = db.prepare(`
-        UPDATE ideas SET ignore_duplicates = 0 WHERE ignore_duplicates = 1
-      `).run();
-      
-      log.info(`Reset ignore_duplicates for ${result.changes} ideas`);
-      return successResponse({ reset: result.changes });
-    } catch (error) {
-      log.error('Error resetting ignore duplicates:', error);
-      return errorResponse(error instanceof Error ? error.message : 'Unknown error');
-    }
-  });
-
   // Export all ideas as JSON
   ipcMain.handle(IPC_CHANNELS.IDEAS_EXPORT_JSON, async () => {
     try {

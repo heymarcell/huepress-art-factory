@@ -18,7 +18,6 @@ export const IPC_CHANNELS = {
   IDEAS_GET_ATTEMPTS: 'ideas:get-attempts',
   IDEAS_SET_VERSION: 'ideas:set-version',
   IDEAS_FIND_DUPLICATES: 'ideas:find-duplicates',
-  IDEAS_RESET_IGNORE_DUPLICATES: 'ideas:reset-ignore-duplicates',
   IDEAS_EXPORT_JSON: 'ideas:export-json',
 
   // Jobs
@@ -37,7 +36,6 @@ export const IPC_CHANNELS = {
   // Export
   EXPORT_RUN: 'export:run',
   EXPORT_SELECT_FOLDER: 'export:select-folder',
-  EXPORT_GET_RUNS: 'export:get-runs',
 
   // Settings
   SETTINGS_GET: 'settings:get',
