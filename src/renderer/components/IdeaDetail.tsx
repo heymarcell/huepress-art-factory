@@ -78,7 +78,7 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
     if (window.huepress?.jobs?.onProgress) {
       unsubscribe = window.huepress.jobs.onProgress((data) => {
         if (data.ideaId === idea.id && data.message) {
-          setLogs(prev => [...prev.slice(-4), data.message!]);
+          setLogs(prev => [...prev.slice(-4), data.message as string]);
         }
       });
     }

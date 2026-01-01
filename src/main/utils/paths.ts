@@ -34,6 +34,7 @@ export function ensureDir(dirPath: string): void {
  */
 export function sanitizeFilename(filename: string): string {
   return filename
+    // eslint-disable-next-line no-control-regex
     .replace(/[<>:"/\\|?*\x00-\x1f]/g, '_') // Replace dangerous chars
     .replace(/\.{2,}/g, '.') // Prevent .. sequences
     .replace(/^\.+/, '') // Remove leading dots

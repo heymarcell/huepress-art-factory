@@ -1,6 +1,7 @@
 import { Session } from 'electron';
 import { z } from 'zod';
 import log from 'electron-log/main';
+import path from 'node:path';
 
 /**
  * Content Security Policy
@@ -62,7 +63,7 @@ export function validateIpcPayload<T>(
  * Sanitize and validate file paths to prevent path traversal
  */
 export function sanitizePath(basePath: string, relativePath: string): string {
-  const path = require('node:path');
+
   const resolved = path.resolve(basePath, relativePath);
 
   // Ensure the resolved path is within the base path

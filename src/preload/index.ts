@@ -8,6 +8,7 @@ import type {
   JobProgress,
   QueueStats,
   ExportOptions,
+  GenerationAttempt,
 } from '../shared/schemas';
 
 // =============================================================================
@@ -78,7 +79,7 @@ const huepressApi = {
     /**
      * Get generation attempts (history) for an idea
      */
-    getAttempts: (id: string): Promise<IpcResponse<any[]>> =>
+    getAttempts: (id: string): Promise<IpcResponse<GenerationAttempt[]>> =>
       ipcRenderer.invoke(IPC_CHANNELS.IDEAS_GET_ATTEMPTS, id),
 
     /**

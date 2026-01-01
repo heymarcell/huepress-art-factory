@@ -2,10 +2,7 @@ import { GoogleGenAI } from '@google/genai';
 import { getSystemInstruction } from './prompts';
 
 
-interface GenerationParams {
-  width?: number;
-  height?: number;
-}
+
 
 export class GeminiService {
   private client: GoogleGenAI;
@@ -21,10 +18,7 @@ export class GeminiService {
   ): Promise<Buffer> {
     const model = 'gemini-3-pro-image-preview';
     
-    // Tools configuration (Google Search etc - disabled for image gen usually, but kept if needed)
-    const tools = [
-      { googleSearch: {} }
-    ];
+
 
     // Parse user input to find skill
     let skill = 'Medium';
@@ -38,6 +32,7 @@ export class GeminiService {
     const systemInstruction = getSystemInstruction(skill);
 
     // Build parts
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const parts: any[] = [{ text: userInput }];
     
     if (templateImages && templateImages.length > 0) {
@@ -56,7 +51,6 @@ export class GeminiService {
       imageConfig: {
         imageSize: '4K',
         // Attempting to pass negative prompt if supported by the underlying model pipeline
-        // @ts-ignore - The SDK types might not match the specific model capabilities
         negativePrompt: "frame, border, rectangle, square, box, page border, edge to edge, full bleed, cropping, text, watermark, logo, signature, solid black, filled shapes, heavy shadow, silhouette, dark background"
       },
       // tools, // Tools often conflict with image generation models, disabling for safety unless needed
@@ -75,7 +69,7 @@ export class GeminiService {
       const response = await this.client.models.generateContentStream({
         model,
         contents,
-        config: config as any,
+        config,
       });
 
       for await (const chunk of response) {
@@ -121,6 +115,7 @@ export class GeminiService {
       const systemInstruction = getSystemInstruction(req.skill);
       
       // Build parts with text prompt
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const parts: any[] = [{ text: req.prompt }];
       
       // Add template images if provided
@@ -143,8 +138,7 @@ export class GeminiService {
           responseModalities: ['IMAGE' as const],
           imageConfig: {
             imageSize: '4K',
-             // @ts-ignore - SDK types mismatch
-            negativePrompt: "frame, border, rectangle, square, box, page border, edge to edge, full bleed, cropping, text, watermark, logo, signature, solid black, filled shapes, heavy shadow, silhouette, dark background"
+             negativePrompt: "frame, border, rectangle, square, box, page border, edge to edge, full bleed, cropping, text, watermark, logo, signature, solid black, filled shapes, heavy shadow, silhouette, dark background"
           },
           systemInstruction: systemInstruction.parts,
         },

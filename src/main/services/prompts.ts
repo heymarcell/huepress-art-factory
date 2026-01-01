@@ -446,6 +446,7 @@ export const SYSTEM_INSTRUCTION_DETAILED = {
 };
 
 export function getSystemInstruction(skill: string): { parts: { text: string }[] } {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let prompt: any = SYSTEM_INSTRUCTION_MEDIUM; // Default
 
   if (skill === 'Easy') {

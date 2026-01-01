@@ -279,6 +279,7 @@ export function registerIdeasHandlers(): void {
 
       if (validated.status && validated.status.length > 0) {
         conditions.push(`status IN (${validated.status.map(() => '?').join(', ')})`);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         params.push(...validated.status);
       }
 
@@ -391,6 +392,7 @@ export function registerIdeasHandlers(): void {
   // Set selected version
   ipcMain.handle(IPC_CHANNELS.IDEAS_SET_VERSION, async (_event, payload: unknown) => {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { ideaId, attemptId } = validateIpcPayload(SetVersionSchema, payload, 'ideas:set-version');
       
       const db = getDatabase();
@@ -542,7 +544,17 @@ export function registerIdeasHandlers(): void {
         return successResponse([]);
       }
 
-      // Generate embeddings and update DB
+      // Group ideas by category to reduce search space (Blocking Strategy)
+      const ideasByCategory: Record<string, typeof ideas> = {};
+      for (const idea of ideas) {
+        const category = idea.category || 'Uncategorized';
+        if (!ideasByCategory[category]) {
+          ideasByCategory[category] = [];
+        }
+        ideasByCategory[category].push(idea);
+      }
+
+      // Generate embeddings for all ideas first (global pass)
       const updateStmt = db.prepare('UPDATE ideas SET embedding = ? WHERE id = ?');
       let generatedCount = 0;
 
@@ -570,68 +582,76 @@ export function registerIdeasHandlers(): void {
         log.info(`Generated embeddings for ${generatedCount} ideas`);
       }
 
-      // Find groups with > 0.85 cosine similarity
+      // Find duplicates within each category group
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const groups: any[][] = [];
       const processed = new Set<string>();
 
-      for (let i = 0; i < ideas.length; i++) {
-        const ideaA = ideas[i];
-        if (processed.has(ideaA.id) || !ideaA.embedding) continue;
+      // Process each category separately
+      for (const [category, categoryIdeas] of Object.entries(ideasByCategory)) {
+        if (categoryIdeas.length < 2) continue;
+        
+        log.debug(`Checking for duplicates in category: ${category} (${categoryIdeas.length} items)`);
 
-        const currentGroup = [{
-          id: ideaA.id,
-          batch_id: ideaA.batch_id,
-          title: ideaA.title,
-          status: ideaA.status,
-          created_at: ideaA.created_at,
-          image_path: ideaA.image_path,
-          skill: ideaA.skill,
-          category: ideaA.category
-        }];
-        processed.add(ideaA.id);
+        for (let i = 0; i < categoryIdeas.length; i++) {
+          const ideaA = categoryIdeas[i];
+          if (processed.has(ideaA.id) || !ideaA.embedding) continue;
 
-        const vecA = new Float32Array(
-          ideaA.embedding.buffer, 
-          ideaA.embedding.byteOffset, 
-          ideaA.embedding.byteLength / 4
-        );
+          const currentGroup = [{
+            id: ideaA.id,
+            batch_id: ideaA.batch_id,
+            title: ideaA.title,
+            status: ideaA.status,
+            created_at: ideaA.created_at,
+            image_path: ideaA.image_path,
+            skill: ideaA.skill,
+            category: ideaA.category
+          }];
+          processed.add(ideaA.id);
 
-        for (let j = i + 1; j < ideas.length; j++) {
-           const ideaB = ideas[j];
-           if (processed.has(ideaB.id) || !ideaB.embedding) continue;
+          const vecA = new Float32Array(
+            ideaA.embedding.buffer, 
+            ideaA.embedding.byteOffset, 
+            ideaA.embedding.byteLength / 4
+          );
 
-           const vecB = new Float32Array(
-             ideaB.embedding.buffer, 
-             ideaB.embedding.byteOffset, 
-             ideaB.embedding.byteLength / 4
-           );
+          for (let j = i + 1; j < categoryIdeas.length; j++) {
+             const ideaB = categoryIdeas[j];
+             if (processed.has(ideaB.id) || !ideaB.embedding) continue;
 
-           const similarity = cosineSimilarity(vecA, vecB);
-           
-           // Log near-misses for debugging (0.6-0.75 range)
-           if (similarity > 0.6 && similarity <= 0.75) {
-             log.info(`Near-miss similarity: ${similarity.toFixed(3)} between "${ideaA.title}" and "${ideaB.title}"`);
-           }
-           
-           // Threshold 0.75 to catch semantic matches with varied wording
-           if (similarity > 0.75) {
-             log.info(`Duplicate found: ${similarity.toFixed(3)} - "${ideaA.title}" ↔ "${ideaB.title}"`);
-             currentGroup.push({
-                id: ideaB.id,
-                batch_id: ideaB.batch_id,
-                title: ideaB.title,
-                status: ideaB.status,
-                created_at: ideaB.created_at,
-                image_path: ideaB.image_path,
-                skill: ideaB.skill,
-                category: ideaB.category
-             });
-             processed.add(ideaB.id);
-           }
-        }
+             const vecB = new Float32Array(
+               ideaB.embedding.buffer, 
+               ideaB.embedding.byteOffset, 
+               ideaB.embedding.byteLength / 4
+             );
 
-        if (currentGroup.length > 1) {
-          groups.push(currentGroup);
+             const similarity = cosineSimilarity(vecA, vecB);
+             
+             // Log near-misses for debugging (0.6-0.75 range)
+             if (similarity > 0.6 && similarity <= 0.75) {
+               log.debug(`Near-miss: ${similarity.toFixed(3)} - "${ideaA.title}" ↔ "${ideaB.title}"`);
+             }
+             
+             // Threshold 0.75 to catch semantic matches with varied wording
+             if (similarity > 0.75) {
+               log.info(`Duplicate found: ${similarity.toFixed(3)} - "${ideaA.title}" ↔ "${ideaB.title}"`);
+               currentGroup.push({
+                  id: ideaB.id,
+                  batch_id: ideaB.batch_id,
+                  title: ideaB.title,
+                  status: ideaB.status,
+                  created_at: ideaB.created_at,
+                  image_path: ideaB.image_path,
+                  skill: ideaB.skill,
+                  category: ideaB.category
+               });
+               processed.add(ideaB.id);
+             }
+          }
+
+          if (currentGroup.length > 1) {
+            groups.push(currentGroup);
+          }
         }
       }
       

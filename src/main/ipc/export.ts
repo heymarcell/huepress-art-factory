@@ -29,10 +29,16 @@ export function registerExportHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.EXPORT_SELECT_FOLDER, async () => {
     try {
       const window = BrowserWindow.getFocusedWindow();
-      const result = await dialog.showOpenDialog(window!, {
-        title: 'Select Export Destination',
-        properties: ['openDirectory', 'createDirectory'],
-      });
+      
+      const result = window 
+        ? await dialog.showOpenDialog(window, {
+            title: 'Select Export Destination',
+            properties: ['openDirectory', 'createDirectory'],
+          })
+        : await dialog.showOpenDialog({
+            title: 'Select Export Destination',
+            properties: ['openDirectory', 'createDirectory'],
+          });
 
       if (result.canceled || result.filePaths.length === 0) {
         return successResponse({ selected: false, path: null });

@@ -161,12 +161,13 @@ export class JobQueue {
       return;
     }
 
-    const slots = concurrency - this.running.size;
+
     const db = getDatabase();
 
     // First, check edit queue
     while (this.editQueue.length > 0 && this.running.size < concurrency) {
-      const editJob = this.editQueue.shift()!;
+      const editJob = this.editQueue.shift();
+      if (!editJob) break;
       const idea = db.prepare('SELECT * FROM ideas WHERE id = ?').get(editJob.ideaId) as Idea | undefined;
       if (idea) {
         this.runEditJob(idea, editJob.instruction);
@@ -280,6 +281,7 @@ export class JobQueue {
       const now = new Date().toISOString();
       db.prepare('UPDATE ideas SET status = ?, selected_attempt_id = ?, updated_at = ? WHERE id = ?').run('Generated', attemptId, now, idea.id);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       log.error(`Job failed for idea ${idea.id}:`, error);
       
@@ -391,6 +393,7 @@ export class JobQueue {
 
       log.info(`[Edit Job ${idea.id}] Completed in ${duration}ms`);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       log.error(`Edit job failed for idea ${idea.id}:`, error);
       

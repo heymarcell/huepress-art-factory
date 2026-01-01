@@ -150,7 +150,7 @@ export function registerSettingsHandlers(): void {
       }
 
       if (!safeStorage.isEncryptionAvailable()) {
-        log.warn('Encryption not available, storing API key in plain text');
+        log.warn('CRITICAL: SafeStorage is unavailable. API key is being stored in plain text. This is a security risk.');
         settings.encryptedApiKey = apiKey;
       } else {
         const encrypted = safeStorage.encryptString(apiKey);

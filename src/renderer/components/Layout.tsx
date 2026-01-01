@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   LayoutDashboard,
@@ -20,7 +20,7 @@ const navItems = [
 ];
 
 export function Layout() {
-  const location = useLocation();
+
 
   const { data: versionInfo } = useQuery({
     queryKey: ['app-version'],

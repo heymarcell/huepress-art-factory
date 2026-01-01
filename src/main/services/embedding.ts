@@ -8,6 +8,7 @@ import log from 'electron-log/main';
 env.cacheDir = path.join(app.getPath('userData'), 'models');
 env.allowLocalModels = false; // Force download from Hub initially
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let extractor: any = null;
 
 /**

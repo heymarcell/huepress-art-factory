@@ -2,10 +2,11 @@ import { app, BrowserWindow, session, protocol } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import log from 'electron-log/main';
-import { initializeDatabase } from './database';
+import { initializeDatabase, getAssetsPath, getDatabasePath } from './database';
 import { registerIpcHandlers } from './ipc';
 import { setupSecurity, CSP } from './security';
 import { startBatchPoller, stopBatchPoller } from './services/batch-poller';
+import { isPathAllowed } from './utils/paths';
 
 // Register custom protocol privileges
 protocol.registerSchemesAsPrivileged([
@@ -122,10 +123,20 @@ const initialize = async (): Promise<void> => {
       const url = request.url.replace('asset://', '');
       try {
         const decodedUrl = decodeURIComponent(url);
-        // On macOS/Linux, absolute paths start with / so we need to ensure we don't lose it if stripped
-        // Use standard URL parsing if possible, or just treat as path
-        // request.url is "asset:///Users/..."
-        // url becomes "/Users/..." which is correct for *nix
+        
+        // Security check: only allow access to assets directory or userData
+        const allowedPaths = [
+          getAssetsPath(),
+          path.dirname(getDatabasePath()) // Allow accessing things in userData
+        ];
+
+        if (!isPathAllowed(decodedUrl, allowedPaths)) {
+          log.error(`Blocked unauthorized access to: ${decodedUrl}`);
+          // Return 403 Forbidden equivalent (connection dropped/net error)
+          callback({ error: -10 }); // NET::ERR_ACCESS_DENIED
+          return;
+        }
+
         callback(decodedUrl);
       } catch (error) {
         log.error('Failed to register file protocol', error);
