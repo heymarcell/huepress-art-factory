@@ -141,6 +141,11 @@ export class GeminiService {
         metadata: { ideaId: req.ideaId },
         config: {
           responseModalities: ['IMAGE' as const],
+          imageConfig: {
+            imageSize: '4K',
+             // @ts-ignore - SDK types mismatch
+            negativePrompt: "frame, border, rectangle, square, box, page border, edge to edge, full bleed, cropping, text, watermark, logo, signature, solid black, filled shapes, heavy shadow, silhouette, dark background"
+          },
           systemInstruction: systemInstruction.parts,
         },
       };
