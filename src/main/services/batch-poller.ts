@@ -141,10 +141,11 @@ async function pollSingleBatch(
             }
         } else if (result.error) {
             log.error(`Batch generation failed for idea ${ideaId}: ${result.error}`);
-            db.prepare("UPDATE ideas SET status = 'Failed' WHERE id = ?").run(ideaId);
+            db.prepare("UPDATE ideas SET status = 'Failed', notes = ? WHERE id = ?").run(`Batch Error: ${result.error}`, ideaId);
         } else {
             // No image and no error?
             log.warn(`Batch result for idea ${ideaId} has no image and no error.`);
+            db.prepare("UPDATE ideas SET status = 'Failed', notes = ? WHERE id = ?").run('Batch result missing image data', ideaId);
         }
     }
     
@@ -208,9 +209,9 @@ async function saveGeneratedImage(
   const attemptId = ulid();
   
   db.prepare(`
-    INSERT INTO generation_attempts (id, idea_id, type, prompt_template_version, request, image_path, created_at)
-    VALUES (?, ?, 'batch', '1.0', '{}', ?, ?)
-  `).run(attemptId, ideaId, imagePath, new Date().toISOString());
+    INSERT INTO generation_attempts (id, idea_id, type, prompt_template_version, request, response_meta, image_path, created_at)
+    VALUES (?, ?, 'generate', '1.0', '{}', ?, ?, ?)
+  `).run(attemptId, ideaId, JSON.stringify({ mode: 'batch' }), imagePath, new Date().toISOString());
   
   // Update idea status and selected attempt
   db.prepare(`
