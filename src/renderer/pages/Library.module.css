@@ -477,7 +477,8 @@
 .statusApproved { background-color: var(--color-accent-subtle); color: var(--color-accent); }
 .statusExported { background-color: var(--color-bg-tertiary); color: var(--color-text-muted); }
 
-.skillBadge {
+.skillBadge,
+.categoryBadge {
   background-color: transparent;
   color: var(--color-text-secondary);
   border: 1px solid var(--color-border);

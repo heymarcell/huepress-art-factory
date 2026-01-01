@@ -73,7 +73,7 @@ export function Library() {
   
   // Duplicate checking
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
-  const [duplicates, setDuplicates] = useState<{ id: string; title: string; status: string; created_at: string; image_path?: string; skill?: string }[][]>([]);
+  const [duplicates, setDuplicates] = useState<{ id: string; title: string; status: string; created_at: string; image_path?: string; skill?: string; category?: string }[][]>([]);
   const [showDuplicatesModal, setShowDuplicatesModal] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   
@@ -877,6 +877,9 @@ export function Library() {
                             </span>
                             {item.skill && (
                               <span className={styles.skillBadge}>{item.skill}</span>
+                            )}
+                            {item.category && (
+                               <span className={styles.categoryBadge}>{item.category}</span>
                             )}
                             <span className={styles.duplicateDate}>
                               {new Date(item.created_at).toLocaleDateString()}

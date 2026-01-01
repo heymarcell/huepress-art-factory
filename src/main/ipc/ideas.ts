@@ -527,7 +527,7 @@ export function registerIdeasHandlers(): void {
       // Get all ideas
       const ideas = db.prepare(`
         SELECT 
-          id, title, description, status, embedding, created_at, skill,
+          id, title, description, status, embedding, created_at, skill, category,
           COALESCE(
             (SELECT image_path FROM generation_attempts WHERE id = ideas.selected_attempt_id),
             (SELECT image_path FROM generation_attempts WHERE idea_id = ideas.id ORDER BY created_at DESC LIMIT 1)
@@ -536,7 +536,7 @@ export function registerIdeasHandlers(): void {
         WHERE (ignore_duplicates = 0 OR ignore_duplicates IS NULL)
         AND status != 'Omitted'
       `).all() as { 
-        id: string; title: string; description: string; status: string; embedding: Buffer | null; created_at: string; image_path?: string; skill?: string
+        id: string; title: string; description: string; status: string; embedding: Buffer | null; created_at: string; image_path?: string; skill?: string; category?: string
       }[];
       
       if (ideas.length === 0) {
