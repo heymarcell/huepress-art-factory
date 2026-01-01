@@ -86,8 +86,8 @@ export function Library() {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<number>>(new Set());
   const newBatchIdRef = useRef<string | null>(null);
   
-  // Generation mode: 'fast' (real-time) or 'slow' (batch, 50% cheaper)
-  const [generationMode, setGenerationMode] = useState<'fast' | 'slow'>('fast');
+  // Generation Mode: 'fast' = real-time, 'slow' = batch
+  const [generationMode, setGenerationMode] = useState<'fast' | 'slow'>('slow');
   
   const sortMenuRef = useRef<HTMLDivElement>(null);
   const filterMenuRef = useRef<HTMLDivElement>(null);
