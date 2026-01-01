@@ -79,9 +79,10 @@ export function Library() {
   
   // Duplicate checking
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
-  const [duplicates, setDuplicates] = useState<{ id: string; title: string; status: string; created_at: string; image_path?: string; skill?: string; category?: string }[][]>([]);
+  const [duplicates, setDuplicates] = useState<{ id: string; batch_id: string; title: string; status: string; created_at: string; image_path?: string; skill?: string; category?: string }[][]>([]);
   const [showDuplicatesModal, setShowDuplicatesModal] = useState(false);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const newBatchIdRef = useRef<string | null>(null);
   
   const sortMenuRef = useRef<HTMLDivElement>(null);
   const filterMenuRef = useRef<HTMLDivElement>(null);
@@ -323,16 +324,34 @@ export function Library() {
     try {
       const result = await window.huepress.ideas.findDuplicates();
       if (result.success && result.data.length > 0) {
-        setDuplicates(result.data);
+        let groups = result.data;
+        
+        // If we have a new batch ID, sort groups to show those containing new imports first
+        if (newBatchIdRef.current) {
+          const batchId = newBatchIdRef.current;
+          groups = groups.sort((a, b) => {
+            const aHasNew = a.some(item => item.batch_id === batchId);
+            const bHasNew = b.some(item => item.batch_id === batchId);
+            if (aHasNew && !bHasNew) return -1;
+            if (!aHasNew && bHasNew) return 1;
+            return b.length - a.length; // Secondary sort by size
+          });
+        }
+        
+        setDuplicates(groups);
         setShowDuplicatesModal(true);
       } else {
-        alert('No duplicates found!');
+        // Only show alert if not auto-checking after import
+        if (!newBatchIdRef.current) {
+          alert('No duplicates found!');
+        }
       }
     } catch (error) {
       console.error('Error checking duplicates:', error);
       alert('Failed to check duplicates');
     } finally {
       setCheckingDuplicates(false);
+      newBatchIdRef.current = null; // Clear after use
     }
   };
 
@@ -340,9 +359,13 @@ export function Library() {
 
   // Auto-check duplicates after import
   useEffect(() => {
-    const state = location.state as { autoCheckDuplicates?: boolean } | null;
+    const state = location.state as { autoCheckDuplicates?: boolean; batchId?: string } | null;
     if (state?.autoCheckDuplicates && !autoCheckRef.current) {
       autoCheckRef.current = true;
+      // Store batchId for priority sorting
+      if (state.batchId) {
+        newBatchIdRef.current = state.batchId;
+      }
       // Use setTimeout to ensure UI is ready
       setTimeout(() => checkForDuplicates(), 100);
       window.history.replaceState({}, '');

@@ -527,7 +527,7 @@ export function registerIdeasHandlers(): void {
       // Get all ideas
       const ideas = db.prepare(`
         SELECT 
-          id, title, description, status, embedding, created_at, skill, category,
+          id, batch_id, title, description, status, embedding, created_at, skill, category,
           COALESCE(
             (SELECT image_path FROM generation_attempts WHERE id = ideas.selected_attempt_id),
             (SELECT image_path FROM generation_attempts WHERE idea_id = ideas.id ORDER BY created_at DESC LIMIT 1)
@@ -535,7 +535,7 @@ export function registerIdeasHandlers(): void {
         FROM ideas
         WHERE status != 'Omitted'
       `).all() as { 
-        id: string; title: string; description: string; status: string; embedding: Buffer | null; created_at: string; image_path?: string; skill?: string; category?: string
+        id: string; batch_id: string; title: string; description: string; status: string; embedding: Buffer | null; created_at: string; image_path?: string; skill?: string; category?: string
       }[];
       
       if (ideas.length === 0) {
@@ -580,6 +580,7 @@ export function registerIdeasHandlers(): void {
 
         const currentGroup = [{
           id: ideaA.id,
+          batch_id: ideaA.batch_id,
           title: ideaA.title,
           status: ideaA.status,
           created_at: ideaA.created_at,
@@ -611,6 +612,7 @@ export function registerIdeasHandlers(): void {
            if (similarity > 0.82) {
              currentGroup.push({
                 id: ideaB.id,
+                batch_id: ideaB.batch_id,
                 title: ideaB.title,
                 status: ideaB.status,
                 created_at: ideaB.created_at,

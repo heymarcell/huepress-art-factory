@@ -41,11 +41,11 @@ export function Import() {
       queryClient.invalidateQueries({ queryKey: ['batches'] });
       
       // Navigate to library and trigger duplicate check
-      // Allow slight delay for invalidation to propagate? No need.
       navigate('/library', { 
         state: { 
           autoCheckDuplicates: true,
-          importCount: data.imported 
+          importCount: data.imported,
+          batchId: data.batchId,
         } 
       });
     },
