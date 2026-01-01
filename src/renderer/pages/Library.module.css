@@ -684,16 +684,32 @@
 .duplicateItem {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 12px;
   border-top: 1px solid var(--color-border);
   background: var(--color-bg-primary);
+  gap: 12px;
+}
+
+.duplicateImage {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 4px;
+  background-color: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
 }
 
 .duplicateInfo {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex: 1;
+}
+
+.duplicateActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .duplicateInfo strong {
@@ -706,7 +722,7 @@
   color: var(--color-text-muted);
 }
 
-.deleteBtn {
+.deleteBtn, .omitBtn, .ignoreBtn {
   padding: 8px;
   color: var(--color-text-muted);
   border-radius: 4px;
@@ -714,6 +730,9 @@
   border: none;
   cursor: pointer;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .deleteBtn:hover {
@@ -721,19 +740,14 @@
   color: var(--color-error);
 }
 
-.omitBtn {
-  padding: 8px;
-  color: var(--color-text-muted);
-  border-radius: 4px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
 .omitBtn:hover {
   background-color: var(--color-bg-tertiary);
   color: var(--color-warning);
+}
+
+.ignoreBtn:hover {
+  background-color: var(--color-success-subtle);
+  color: var(--color-success);
 }
 
 .spin {

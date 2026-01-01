@@ -19,6 +19,7 @@ import {
   Filter,
   Copy,
   Ban,
+  Check,
 } from 'lucide-react';
 import type { Idea, IdeaStatus } from '../../shared/schemas';
 import { IdeaDetail } from '../components/IdeaDetail';
@@ -72,7 +73,7 @@ export function Library() {
   
   // Duplicate checking
   const [checkingDuplicates, setCheckingDuplicates] = useState(false);
-  const [duplicates, setDuplicates] = useState<{ id: string; title: string; status: string; created_at: string }[][]>([]);
+  const [duplicates, setDuplicates] = useState<{ id: string; title: string; status: string; created_at: string; image_path?: string }[][]>([]);
   const [showDuplicatesModal, setShowDuplicatesModal] = useState(false);
   
   const sortMenuRef = useRef<HTMLDivElement>(null);
@@ -209,6 +210,17 @@ export function Library() {
       queryClient.invalidateQueries({ queryKey: ['ideas'] });
       queryClient.invalidateQueries({ queryKey: ['idea', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['project-info'] });
+    },
+  });
+
+  const updateFieldsMutation = useMutation({
+    mutationFn: async ({ id, fields }: { id: string; fields: any }) => {
+      const result = await window.huepress.ideas.updateFields(id, fields);
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ideas'] });
     },
   });
 
@@ -818,21 +830,39 @@ export function Library() {
                     <div className={styles.groupHeader}>Group {i + 1} ({group.length} items)</div>
                     {group.map((item) => (
                       <div key={item.id} className={styles.duplicateItem}>
+                        {item.image_path ? (
+                          <img src={`file://${item.image_path}`} className={styles.duplicateImage} alt="" />
+                        ) : (
+                          <div className={styles.duplicateImage} />
+                        )}
                         <div className={styles.duplicateInfo}>
                           <strong>{item.title}</strong>
                           <span>{item.status} • {new Date(item.created_at).toLocaleDateString()}</span>
                         </div>
-                        <button
-                          className={styles.omitBtn}
-                          onClick={() => {
-                             batchStatusMutation.mutate({ ids: [item.id], status: 'Omitted' });
-                             // Optimistically remove from list
-                             setDuplicates(prev => prev.map(g => g.filter(i => i.id !== item.id)).filter(g => g.length > 1));
-                          }}
-                          title="Omit this item (mark as Omitted)"
-                        >
-                          <Ban size={16} />
-                        </button>
+                        <div className={styles.duplicateActions}>
+                          <button
+                            className={styles.ignoreBtn}
+                            onClick={() => {
+                               updateFieldsMutation.mutate({ id: item.id, fields: { ignore_duplicates: true } });
+                               // Optimistically remove from list
+                               setDuplicates(prev => prev.map(g => g.filter(i => i.id !== item.id)).filter(g => g.length > 1));
+                            }}
+                            title="Keep (Ignore duplicate warning)"
+                          >
+                            <Check size={16} />
+                          </button>
+                          <button
+                            className={styles.omitBtn}
+                            onClick={() => {
+                               batchStatusMutation.mutate({ ids: [item.id], status: 'Omitted' });
+                               // Optimistically remove from list
+                               setDuplicates(prev => prev.map(g => g.filter(i => i.id !== item.id)).filter(g => g.length > 1));
+                            }}
+                            title="Omit this item (mark as Omitted)"
+                          >
+                            <Ban size={16} />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

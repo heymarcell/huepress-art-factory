@@ -41,6 +41,7 @@ const UpdateFieldsSchema = z.object({
     description: z.string().optional(),
     category: z.string().optional(),
     skill: z.string().optional(),
+    ignore_duplicates: z.boolean().or(z.number()).optional(),
   }),
 });
 
@@ -95,6 +96,7 @@ function rowToIdea(row: Record<string, unknown>): Idea {
     dedupe_hash: row.dedupe_hash as string,
     image_path: row.image_path as string | null | undefined,
     selected_attempt_id: row.selected_attempt_id as string | null | undefined, 
+    ignore_duplicates: row.ignore_duplicates as number | boolean | undefined,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
   };
@@ -439,6 +441,13 @@ export function registerIdeasHandlers(): void {
         updates.push('skill = ?');
         params.push(fields.skill);
       }
+      if (fields.ignore_duplicates !== undefined) {
+        updates.push('ignore_duplicates = ?');
+        // Convert boolean to integer for SQLite if needed, but better-sqlite3 handles boolean as 0/1 automatically if typed? 
+        // Actually SQLite stores boolean as 0/1. better-sqlite3 automatically converts JS boolean to 1/0? No, usually need to cast.
+        // Let's assume input can be boolean or number.
+        params.push(fields.ignore_duplicates === true ? 1 : fields.ignore_duplicates === false ? 0 : fields.ignore_duplicates);
+      }
 
       params.push(id);
 
@@ -516,8 +525,14 @@ export function registerIdeasHandlers(): void {
     try {
       const db = getDatabase();
       // Get all ideas
-      const ideas = db.prepare('SELECT id, title, description, status, embedding, created_at FROM ideas').all() as { 
-        id: string; title: string; description: string; status: string; embedding: Buffer | null; created_at: string 
+      const ideas = db.prepare(`
+        SELECT 
+          id, title, description, status, embedding, created_at,
+          (SELECT image_path FROM generation_attempts WHERE idea_id = ideas.id ORDER BY created_at DESC LIMIT 1) as image_path 
+        FROM ideas
+        WHERE ignore_duplicates = 0 OR ignore_duplicates IS NULL
+      `).all() as { 
+        id: string; title: string; description: string; status: string; embedding: Buffer | null; created_at: string; image_path?: string 
       }[];
       
       if (ideas.length === 0) {
@@ -564,7 +579,8 @@ export function registerIdeasHandlers(): void {
           id: ideaA.id,
           title: ideaA.title,
           status: ideaA.status,
-          created_at: ideaA.created_at
+          created_at: ideaA.created_at,
+          image_path: ideaA.image_path
         }];
         processed.add(ideaA.id);
 
@@ -592,7 +608,8 @@ export function registerIdeasHandlers(): void {
                 id: ideaB.id,
                 title: ideaB.title,
                 status: ideaB.status,
-                created_at: ideaB.created_at
+                created_at: ideaB.created_at,
+                image_path: ideaB.image_path
              });
              processed.add(ideaB.id);
            }

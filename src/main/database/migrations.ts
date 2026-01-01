@@ -158,6 +158,13 @@ Requirements:
       ALTER TABLE ideas ADD COLUMN embedding BLOB;
     `,
   },
+  {
+    version: 6,
+    name: 'add_ignore_duplicates',
+    up: `
+      ALTER TABLE ideas ADD COLUMN ignore_duplicates INTEGER DEFAULT 0;
+    `,
+  },
 ];
 
 /**
