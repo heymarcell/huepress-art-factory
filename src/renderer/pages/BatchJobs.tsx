@@ -118,9 +118,8 @@ export function BatchJobs() {
     <div className={styles.container}>
       <header className={styles.header}>
         <div className={styles.headerLeft}>
-          <Layers size={24} className={styles.headerIcon} />
           <div>
-            <h1>Batch Jobs</h1>
+            <h1 className={styles.title}>Batch Jobs</h1>
             <p className={styles.subtitle}>Monitor background generation tasks</p>
           </div>
         </div>
@@ -130,7 +129,11 @@ export function BatchJobs() {
           className={styles.refreshBtn}
           disabled={pollMutation.isPending}
         >
-          <RefreshCw size={16} className={pollMutation.isPending ? styles.spin : ''} />
+          {pollMutation.isPending ? (
+            <Loader2 size={16} className={styles.spin} />
+          ) : (
+            <RefreshCw size={16} />
+          )}
           {pollMutation.isPending ? 'Syncing...' : 'Sync Now'}
         </button>
       </header>
