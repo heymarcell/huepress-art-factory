@@ -555,7 +555,7 @@
 .lightbox {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 3000; /* Must be above drawer (2000) */
   background-color: rgba(0, 0, 0, 0.95);
   display: flex;
   align-items: center;
@@ -589,7 +589,7 @@
   backdrop-filter: blur(8px);
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  z-index: 1010;
+  z-index: 3010;
   animation: slideUp 0.2s ease-out;
 }
 
