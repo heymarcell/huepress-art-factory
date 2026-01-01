@@ -20,6 +20,7 @@ import {
   Copy,
   Ban,
   Check,
+  Paintbrush,
 } from 'lucide-react';
 import type { Idea, IdeaStatus } from '../../shared/schemas';
 import { IdeaDetail } from '../components/IdeaDetail';
@@ -329,6 +330,59 @@ export function Library() {
     }
   }, [location]);
 
+
+
+  // Fetch project stats for Generate All button
+  const { data: projectInfo } = useQuery({
+    queryKey: ['project-info'],
+    queryFn: async () => {
+      const result = await window.huepress.app.getProjectInfo();
+      return result.success ? result.data : null;
+    },
+    // Don't refetch too often if not needed, but dashboard does 1s
+    refetchInterval: 5000, 
+  });
+  
+  const importedCount = projectInfo?.stats?.byStatus?.Imported || 0;
+
+  // Mutation to generate all imported ideas
+  const generateAllMutation = useMutation({
+    mutationFn: async () => {
+      // Get all imported ideas
+      const result = await window.huepress.ideas.list({ status: ['Imported'], limit: 1000 });
+      if (!result.success) throw new Error(result.error);
+      
+      const ids = result.data.ideas.map((i: { id: string }) => i.id);
+      if (ids.length === 0) throw new Error('No imported ideas to generate');
+      
+      // Enqueue all
+      const enqueueResult = await window.huepress.jobs.enqueue(ids);
+      if (!enqueueResult.success) throw new Error(enqueueResult.error);
+      
+      return { count: ids.length };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project-info'] });
+      queryClient.invalidateQueries({ queryKey: ['ideas'] });
+    },
+  });
+
+  const handleGenerateAll = () => {
+    if (importedCount === 0) {
+      alert('No imported ideas to generate.');
+      return;
+    }
+    
+    const confirmed = confirm(
+      `Start generating ${importedCount} imported idea${importedCount !== 1 ? 's' : ''}?\n\n` +
+      `This will queue all ideas with "Imported" status.`
+    );
+    
+    if (confirmed) {
+      generateAllMutation.mutate();
+    }
+  };
+
   const generateMutation = useMutation({
     mutationFn: async (id: string) => {
       const result = await window.huepress.jobs.enqueue([id]);
@@ -560,6 +614,17 @@ export function Library() {
                 <CheckSquare size={14} />
                 Select
               </button>
+              
+              <button
+                onClick={handleGenerateAll}
+                className={styles.btnSecondary}
+                disabled={importedCount === 0 || generateAllMutation.isPending}
+                title={importedCount > 0 ? `Generate ${importedCount} imported ideas` : "No pending imports"}
+              >
+                <Paintbrush size={14} />
+                Generate {importedCount > 0 ? `(${importedCount})` : ''}
+              </button>
+
               <Link to="/import" className={styles.btnPrimary}>
                 <Plus size={14} />
                 Import
