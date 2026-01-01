@@ -316,10 +316,13 @@ export function Library() {
     }
   };
 
+  const autoCheckRef = useRef(false);
+
   // Auto-check duplicates after import
   useEffect(() => {
     const state = location.state as { autoCheckDuplicates?: boolean } | null;
-    if (state?.autoCheckDuplicates) {
+    if (state?.autoCheckDuplicates && !autoCheckRef.current) {
+      autoCheckRef.current = true;
       // Use setTimeout to ensure UI is ready
       setTimeout(() => checkForDuplicates(), 100);
       window.history.replaceState({}, '');
