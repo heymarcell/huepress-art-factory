@@ -139,9 +139,8 @@ export function Library() {
         category: filters.category ? [filters.category] : undefined,
         skill: filters.skill ? [filters.skill] : undefined,
         search: filters.search || undefined,
-        // Increase limit or implement pagination properly later
-        // But with specific filters, 100 is usually enough for the view
-        limit: 100,
+        // Increase limit to prevent cutting off recent items during heavy filtering
+        limit: 1000,
         offset: 0,
       });
       if (!result.success) {
