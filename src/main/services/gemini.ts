@@ -119,7 +119,7 @@ export class GeminiService {
     const inlinedRequests = requests.map((req) => {
       const systemInstruction = getSystemInstruction(req.skill);
       return {
-        model: 'gemini-2.0-flash',
+        model: 'gemini-3-pro-image-preview',
         contents: [{ role: 'user', parts: [{ text: req.prompt }] }],
         metadata: { ideaId: req.ideaId },
         config: {
@@ -131,7 +131,7 @@ export class GeminiService {
     
     // Submit to Batch API with inline requests
     const response = await this.client.batches.create({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-3-pro-image-preview',
       src: inlinedRequests,
     });
     
