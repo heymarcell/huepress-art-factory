@@ -21,6 +21,7 @@ import {
   Ban,
   Check,
   Paintbrush,
+  RotateCcw,
 } from 'lucide-react';
 import type { Idea, IdeaStatus } from '../../shared/schemas';
 import { IdeaDetail } from '../components/IdeaDetail';
@@ -935,9 +936,27 @@ export function Library() {
           <div className={styles.modalContent}>
             <div className={styles.modalHeader}>
               <h3>Potential Duplicates Found ({duplicates.length} groups)</h3>
-              <button onClick={() => setShowDuplicatesModal(false)} className={styles.closeBtn}>
-                <X size={20} />
-              </button>
+              <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+                <button 
+                  onClick={async () => {
+                    const confirmed = confirm('Reset all accepted duplicates? This will re-include previously accepted items in future duplicate checks.');
+                    if (confirmed) {
+                      const result = await window.huepress.ideas.resetIgnoreDuplicates();
+                      if (result.success) {
+                        alert(`Reset ${result.data.reset} item(s). Run duplicate check again to see results.`);
+                      }
+                    }
+                  }}
+                  className={styles.secondaryBtn}
+                  title="Reset all accepted duplicates"
+                >
+                  <RotateCcw size={16} />
+                  Reset Accepted
+                </button>
+                <button onClick={() => setShowDuplicatesModal(false)} className={styles.closeBtn}>
+                  <X size={20} />
+                </button>
+              </div>
             </div>
             <div className={styles.modalBody}>
               <p className={styles.modalDesc}>

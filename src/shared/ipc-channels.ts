@@ -18,6 +18,7 @@ export const IPC_CHANNELS = {
   IDEAS_GET_ATTEMPTS: 'ideas:get-attempts',
   IDEAS_SET_VERSION: 'ideas:set-version',
   IDEAS_FIND_DUPLICATES: 'ideas:find-duplicates',
+  IDEAS_RESET_IGNORE_DUPLICATES: 'ideas:reset-ignore-duplicates',
 
   // Jobs
   JOBS_ENQUEUE: 'jobs:enqueue',

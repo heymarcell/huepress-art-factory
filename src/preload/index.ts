@@ -67,6 +67,12 @@ const huepressApi = {
       ipcRenderer.invoke(IPC_CHANNELS.IDEAS_FIND_DUPLICATES),
 
     /**
+     * Reset ignore_duplicates flag for all ideas (re-include in duplicate checks)
+     */
+    resetIgnoreDuplicates: (): Promise<IpcResponse<{ reset: number }>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.IDEAS_RESET_IGNORE_DUPLICATES),
+
+    /**
      * Set status for multiple ideas
      */
     setStatus: (
