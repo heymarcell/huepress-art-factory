@@ -17,6 +17,7 @@ import {
   ArrowUp,
   ArrowDown,
   Filter,
+  Copy,
 } from 'lucide-react';
 import type { Idea, IdeaStatus } from '../../shared/schemas';
 import { IdeaDetail } from '../components/IdeaDetail';
@@ -67,6 +68,11 @@ export function Library() {
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [showFilterMenu, setShowFilterMenu] = useState(false);
+  
+  // Duplicate checking
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+  const [duplicates, setDuplicates] = useState<{ id: string; title: string; status: string; created_at: string }[][]>([]);
+  const [showDuplicatesModal, setShowDuplicatesModal] = useState(false);
   
   const sortMenuRef = useRef<HTMLDivElement>(null);
   const filterMenuRef = useRef<HTMLDivElement>(null);
@@ -256,6 +262,24 @@ export function Library() {
       setShowStatusMenu(false);
     },
   });
+
+  const checkForDuplicates = async () => {
+    setCheckingDuplicates(true);
+    try {
+      const result = await window.huepress.ideas.findDuplicates();
+      if (result.success && result.data.length > 0) {
+        setDuplicates(result.data);
+        setShowDuplicatesModal(true);
+      } else {
+        alert('No duplicates found!');
+      }
+    } catch (error) {
+      console.error('Error checking duplicates:', error);
+      alert('Failed to check duplicates');
+    } finally {
+      setCheckingDuplicates(false);
+    }
+  };
 
   const generateMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -609,6 +633,18 @@ export function Library() {
           )}
         </div>
 
+        {/* Duplicates Button */}
+        <button
+          className={styles.toolbarBtn}
+          onClick={checkForDuplicates}
+          disabled={checkingDuplicates}
+          title="Find semantic duplicates (vector search)"
+          style={{ width: 'auto', paddingRight: '8px' }}
+        >
+          {checkingDuplicates ? <RefreshCw size={14} className={styles.spin} /> : <Copy size={14} />}
+          {checkingDuplicates ? 'Checking...' : 'Duplicates'}
+        </button>
+
         {/* Filter dropdown */}
         <div className={styles.dropdown} ref={filterMenuRef}>
           <button
@@ -760,6 +796,52 @@ export function Library() {
           onGenerate={() => handleGenerate(selectedIdea.id)}
           onVersionChange={(attemptId) => setVersionMutation.mutate({ ideaId: selectedIdea.id, attemptId })}
         />
+      )}
+      {/* Duplicates Modal */}
+      {showDuplicatesModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <h3>Potential Duplicates Found ({duplicates.length} groups)</h3>
+              <button onClick={() => setShowDuplicatesModal(false)} className={styles.closeBtn}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <p className={styles.modalDesc}>
+                These items have very similar semantic meaning. Review and merge/delete duplicates.
+              </p>
+              <div className={styles.duplicatesList}>
+                {duplicates.map((group, i) => (
+                  <div key={i} className={styles.duplicateGroup}>
+                    <div className={styles.groupHeader}>Group {i + 1} ({group.length} items)</div>
+                    {group.map((item) => (
+                      <div key={item.id} className={styles.duplicateItem}>
+                        <div className={styles.duplicateInfo}>
+                          <strong>{item.title}</strong>
+                          <span>{item.status} • {new Date(item.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <button
+                          className={styles.deleteBtn}
+                          onClick={() => {
+                             if(confirm('Are you sure you want to delete this duplicate?')) {
+                               deleteMutation.mutate(item.id);
+                               // Optimistically remove from list
+                               setDuplicates(prev => prev.map(g => g.filter(i => i.id !== item.id)).filter(g => g.length > 1));
+                             }
+                          }}
+                          title="Delete this item"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -151,6 +151,13 @@ Requirements:
       ALTER TABLE ideas ADD COLUMN notes TEXT;
     `,
   },
+  {
+    version: 5,
+    name: 'add_embedding_column',
+    up: `
+      ALTER TABLE ideas ADD COLUMN embedding BLOB;
+    `,
+  },
 ];
 
 /**

@@ -595,3 +595,137 @@
   color: var(--color-text-muted);
   text-align: right;
 }
+
+/* Duplicates Modal */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modalContent {
+  width: 90%;
+  max-width: 800px;
+  max-height: 85vh;
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modalHeader h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+.closeBtn {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+}
+
+.closeBtn:hover {
+  color: var(--color-text-primary);
+}
+
+.modalBody {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modalDesc {
+  color: var(--color-text-secondary);
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.duplicatesList {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.duplicateGroup {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.groupHeader {
+  background-color: var(--color-bg-tertiary);
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+}
+
+.duplicateItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg-primary);
+}
+
+.duplicateInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.duplicateInfo strong {
+  font-size: 14px;
+  color: var(--color-text-primary);
+}
+
+.duplicateInfo span {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.deleteBtn {
+  padding: 8px;
+  color: var(--color-text-muted);
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.deleteBtn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--color-error);
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

@@ -61,6 +61,12 @@ const huepressApi = {
       ipcRenderer.invoke(IPC_CHANNELS.IDEAS_DELETE, id),
 
     /**
+     * Find potential duplicates
+     */
+    findDuplicates: (): Promise<IpcResponse<{ id: string; title: string; status: string; created_at: string }[][]>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.IDEAS_FIND_DUPLICATES),
+
+    /**
      * Set status for multiple ideas
      */
     setStatus: (

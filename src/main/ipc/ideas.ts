@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import log from 'electron-log/main';
 import { getDatabase } from '../database';
 import { validateIpcPayload } from '../security';
+import { getEmbedding, cosineSimilarity } from '../services/embedding';
 import {
   IPC_CHANNELS,
   successResponse,
@@ -504,6 +505,110 @@ export function registerIdeasHandlers(): void {
       return successResponse({ updated: ids.length });
     } catch (error) {
       log.error('Error setting status:', error);
+      return errorResponse(error instanceof Error ? error.message : 'Unknown error');
+    }
+  });
+
+  /**
+   * Find potential duplicates
+   */
+  ipcMain.handle(IPC_CHANNELS.IDEAS_FIND_DUPLICATES, async () => {
+    try {
+      const db = getDatabase();
+      // Get all ideas
+      const ideas = db.prepare('SELECT id, title, description, status, embedding, created_at FROM ideas').all() as { 
+        id: string; title: string; description: string; status: string; embedding: Buffer | null; created_at: string 
+      }[];
+      
+      if (ideas.length === 0) {
+        return successResponse([]);
+      }
+
+      // Generate embeddings and update DB
+      const updateStmt = db.prepare('UPDATE ideas SET embedding = ? WHERE id = ?');
+      let generatedCount = 0;
+
+      for (const idea of ideas) {
+        if (!idea.embedding) {
+          try {
+            // Combine title and description for richer context
+            const text = `${idea.title} ${idea.description || ''}`;
+            const vector = await getEmbedding(text);
+            
+            // Store as Buffer (blob)
+            const buffer = Buffer.from(vector.buffer);
+            updateStmt.run(buffer, idea.id);
+            
+            // Update in-memory object
+            idea.embedding = buffer;
+            generatedCount++;
+          } catch (err) {
+            log.error(`Failed to generate embedding for idea ${idea.id}:`, err);
+          }
+        }
+      }
+      
+      if (generatedCount > 0) {
+        log.info(`Generated embeddings for ${generatedCount} ideas`);
+      }
+
+      // Find groups with > 0.85 cosine similarity
+      const groups: any[][] = [];
+      const processed = new Set<string>();
+
+      for (let i = 0; i < ideas.length; i++) {
+        const ideaA = ideas[i];
+        if (processed.has(ideaA.id) || !ideaA.embedding) continue;
+
+        const currentGroup = [{
+          id: ideaA.id,
+          title: ideaA.title,
+          status: ideaA.status,
+          created_at: ideaA.created_at
+        }];
+        processed.add(ideaA.id);
+
+        const vecA = new Float32Array(
+          ideaA.embedding.buffer, 
+          ideaA.embedding.byteOffset, 
+          ideaA.embedding.byteLength / 4
+        );
+
+        for (let j = i + 1; j < ideas.length; j++) {
+           const ideaB = ideas[j];
+           if (processed.has(ideaB.id) || !ideaB.embedding) continue;
+
+           const vecB = new Float32Array(
+             ideaB.embedding.buffer, 
+             ideaB.embedding.byteOffset, 
+             ideaB.embedding.byteLength / 4
+           );
+
+           const similarity = cosineSimilarity(vecA, vecB);
+           
+           // Threshold 0.82 is usually appropriate for Sentence Transformers semantic match
+           if (similarity > 0.82) {
+             currentGroup.push({
+                id: ideaB.id,
+                title: ideaB.title,
+                status: ideaB.status,
+                created_at: ideaB.created_at
+             });
+             processed.add(ideaB.id);
+           }
+        }
+
+        if (currentGroup.length > 1) {
+          groups.push(currentGroup);
+        }
+      }
+      
+      // Sort groups by size
+      groups.sort((a, b) => b.length - a.length);
+      
+      return successResponse(groups);
+    } catch (error) {
+      log.error('Error finding duplicates:', error);
       return errorResponse(error instanceof Error ? error.message : 'Unknown error');
     }
   });
