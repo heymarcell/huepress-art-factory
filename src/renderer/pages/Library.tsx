@@ -974,8 +974,9 @@ export function Library() {
                   }}
                   className={styles.secondaryBtn}
                   title="Reset all accepted duplicates"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}
                 >
-                  <RotateCcw size={16} />
+                  <RotateCcw size={14} />
                   Reset Accepted
                 </button>
                 <button onClick={() => setShowDuplicatesModal(false)} className={styles.closeBtn}>
