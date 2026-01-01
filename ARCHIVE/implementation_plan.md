@@ -1,0 +1,62 @@
+# Improve Detail & Lightbox UX
+
+## Goal
+
+Enhance user control by fixing ESC behavior and adding deep-zoom capabilities to the Lightbox.
+
+## Features
+
+### 1. Smart ESC Handling
+
+- **Priority Logic:**
+  - If **Lightbox** is open -> ESC closes Lightbox (Detail View stays open).
+  - If **Lightbox** is closed -> ESC closes Detail View.
+- **Implementation:**
+  - `IdeaDetail.tsx` listens for global `keydown` event.
+  - Checks state `showLightbox` to decide which action to take.
+
+### 2. Advanced Lightbox
+
+- **State:** `scale` (1 to 5), `translate` ({x,y}), `isDragging`.
+- **Controls:**
+  - **Zoom:** MouseWheel, Buttons (+ / -).
+  - **Pan:** Drag mouse (when zoomed in).
+  - **Reset:** Button/Double-click to return to 100%.
+- **UI:** floating toolbar at bottom of lightbox.
+
+## Plan
+
+### `src/renderer/components/IdeaDetail.tsx`
+
+1.  **Refactor Lightbox Render:** Move Lightbox into a dedicated sub-component `LightboxView` or keep internal but organize state.
+    - _Decision:_ Keep internal for simplicity, but use dedicated state variables.
+2.  **Add State:**
+    ```typescript
+    const [zoom, setZoom] = useState(1);
+    const [pan, setPan] = useState({ x: 0, y: 0 });
+    const [isDragging, setIsDragging] = useState(false);
+    ```
+3.  **Implement Handlers:**
+    - `handleWheel`: Adjust zoom, clamp between 1 and 5.
+    - `handleMouseDown/Move/Up`: Implement panning logic.
+    - `handleZoomIn/Out`: Button handlers.
+4.  **Update ESC Logic:**
+    ```typescript
+    if (e.key === "Escape") {
+      if (showLightbox) setShowLightbox(false);
+      else onClose();
+    }
+    ```
+
+### `src/renderer/components/IdeaDetail.module.css`
+
+1.  **Lightbox Container:** `overflow: hidden`.
+2.  **Image:** `transform: translate(...) scale(...)`, `cursor: grab/grabbing`.
+3.  **Toolbar:** Float at bottom center, semi-transparent.
+
+## Verification
+
+1.  Open Detail -> Press ESC -> Should close.
+2.  Open Lightbox -> Press ESC -> Should close Lightbox, Detail stays.
+3.  Lightbox Zoom: Scroll wheel works, buttons work.
+4.  Lightbox Pan: Drag works when zoomed in.

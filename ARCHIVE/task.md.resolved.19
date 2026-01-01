@@ -1,0 +1,5 @@
+- [ ] Review [prompts.ts](file:///Users/heymarcell/DEV/coloring-generator/test-prompts.ts) for age suitability
+- [ ] Refine `Easy` skill (2-5 years): Big shapes, bold lines, minimal detail
+- [ ] Refine `Medium` skill (5-8 years): Balanced detail, playful themes
+- [ ] Refine `Detailed` skill (8+ years): Intricate patterns, mindfulness focus
+- [ ] Ensure formatting consistency across all levels

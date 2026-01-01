@@ -1,0 +1,71 @@
+# HuePress Art Factory - Development Tasks
+
+## Current Phase: M0 - Foundations ✅ COMPLETE
+
+### [x] Planning & Setup
+- [x] Review PRD and create implementation plan
+- [x] Get user approval on implementation plan and tech choices
+
+### [x] M0: Foundations
+- [x] Initialize Electron project with Electron Forge + Vite
+- [x] Configure secure Electron defaults (contextIsolation, sandbox, CSP)
+- [x] Set up TypeScript + React renderer
+- [x] Create preload script with minimal contextBridge API
+- [x] Set up SQLite database with better-sqlite3
+- [x] Create initial database schema and migrations
+- [x] Implement project folder layout (db/assets/exports)
+- [x] Create settings store with electron-store
+- [x] Add safeStorage integration for API key encryption
+- [x] Verify secure IPC boundary with type-safe channels
+- [x] Create path utilities (traversal prevention, sanitization)
+- [x] Create logger utilities (electron-log wrapper)
+- [x] Add Jobs IPC handler stubs (for M2)
+- [x] Create unit tests (Zod schemas, path utilities)
+- [x] Verify all 15 tests pass
+
+---
+
+## Next Phase: M1 - Import + Library
+
+### [ ] M1: Import + Library
+- [ ] Wire Import page to IPC (already functional, needs polish)
+- [ ] Add proper error handling in renderer
+- [ ] Schema validation with detailed UI feedback
+- [ ] Dedupe logic confirmation dialog
+- [ ] Batch management (rename, delete with confirmation)
+- [ ] Library grid/list view toggle
+- [ ] Virtualized list for 10k+ items
+- [ ] Filter system (status/category/skill/tags)
+- [ ] Combined filter persistence
+- [ ] Item detail panel (metadata view)
+- [ ] Bulk selection and actions
+
+---
+
+### [ ] M2: Generation Pipeline
+- [ ] Gemini API client wrapper (`services/gemini.ts`)
+- [ ] Job queue implementation (`services/queue.ts`)
+- [ ] Prompt template engine with versioning
+- [ ] Image persistence + SHA256 checksums
+- [ ] Concurrency control and rate limiting
+- [ ] Retry logic with exponential backoff
+- [ ] Basic QC checks (B/W, borders, margins)
+- [ ] Generation attempt history tracking
+- [ ] Progress UI with cancellation
+
+### [ ] M3: Review + Iteration
+- [ ] Full review UI with large preview
+- [ ] Regenerate action
+- [ ] Modify action (text instruction)
+- [ ] Accept/Reject workflow
+- [ ] QC flags display and notes
+- [ ] Batch operations (accept/reject/regenerate multiple)
+
+### [ ] M4: Export + Release
+- [ ] Export runner with profiles
+- [ ] Deterministic ArtID naming
+- [ ] JSON sidecar generation
+- [ ] Packaging per OS (macOS, Windows)
+- [ ] Code signing hooks
+- [ ] Crash reporting + logging
+- [ ] Auto-update strategy

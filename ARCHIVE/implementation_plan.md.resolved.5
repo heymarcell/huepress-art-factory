@@ -1,0 +1,48 @@
+# Alignment with HuePress Coloring Artwork Bible
+
+## Goal
+Update [prompts.ts](file:///Users/heymarcell/DEV/coloring-generator/test-prompts.ts) to strictly adhere to the "HuePress Coloring Artwork Bible" standards, specifically targeting the 4 complexity levels, line weight specifications, and "Bold & Easy" aesthetic constraints.
+
+## Alignment Strategy
+
+| Bible Level | Target Age | Description | System Mapping |
+| :--- | :--- | :--- | :--- |
+| **Level 1** | 2-3 / Motor Delay | 1-5 large regions, 6pt+ lines, no background. | **Easy** (Refine to match L1 specs) |
+| **Level 2** | 3-5 / Pre-K | 6-15 regions, 4-5pt lines, minimal background. | **Medium** (Shift 'Easy' upper range or 'Medium' lower range?) -> *Correction*: Creating a "Level 2" might require a new prompt, or I can widen "Easy" to covers L1-L2 range if necessary, but arguably "Easy" should be L1/L2 and "Medium" L3. |
+| **Level 3** | 5-8 / Elementary | 16-30 regions, 3-4pt lines. | **Medium** (Matches current Medium range) |
+| **Level 4** | 8+ / Tween | 30-50 regions, pattern-based. | **Detailed** (Matches current Detailed range) |
+
+**Decision:** I will refine the 3 existing levels to best cover the Bible's 4-level spectrum:
+*   **Easy:** Targets **Bible Level 1 & 2** (Toddler/Pre-K). Big shapes, 1-15 regions. 
+*   **Medium:** Targets **Bible Level 3** (Elementary). 16-30 regions.
+*   **Detailed:** Targets **Bible Level 4** (Tween/Focus). 30-50+ regions.
+
+## Proposed Changes
+
+### [src/main/services/prompts.ts](file:///Users/heymarcell/DEV/coloring-generator/src/main/services/prompts.ts)
+
+#### General Constraints (All Levels)
+*   **Line Weight:** Enforce **Monoline**, **Rounded Caps/Joins**.
+*   **Contrast:** Strictly **#000000** on **#FFFFFF**.
+*   **Negative Space:** Enforce "Halo" around distinct subjects.
+
+#### `SYSTEM_INSTRUCTION_EASY` (Align with Level 1/2)
+*   **Region Count:** 1-15 (covering L1 & L2 range).
+*   **Line Weight:** **6pt+** (Outer), **4pt** (Inner).
+*   **Detail:** "Zero micro-details. Eyes are solid dots."
+*   **Background:** "None or Single Ground Line."
+
+#### `SYSTEM_INSTRUCTION_MEDIUM` (Align with Level 3)
+*   **Region Count:** 16-30.
+*   **Line Weight:** **4pt-5pt** (Outer), **3pt-4pt** (Inner).
+*   **Detail:** "Moderate. Simple patterns (stripes/dots)."
+*   **Background:** "Moderate (trees, stars, bubbles)."
+
+#### `SYSTEM_INSTRUCTION_DETAILED` (Align with Level 4)
+*   **Region Count:** 30-50 (Patterns).
+*   **Line Weight:** **4pt** (Outer), **3pt** (Inner).
+*   **Detail:** "Pattern-based (mandala-lite, food spread)."
+*   **Style:** "Dopamine Decor" aesthetics (Floating sushi, patterns).
+
+## Verification
+*   Review generated prompts against the "QA Checklist" in the Bible (Closed paths, Margins > 0.75", No tapering).

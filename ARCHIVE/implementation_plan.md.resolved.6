@@ -1,0 +1,56 @@
+# Fix Detail View Navigation UX
+
+## Goal
+Prevent the list order from jumping or items disappearing when navigating ("Next/Prev") while in the Detail View, specifically after changing an item's status (e.g., "Approve").
+
+## Problem
+Currently, [Library.tsx](file:///Users/heymarcell/DEV/coloring-generator/src/renderer/pages/Library.tsx) calculates `filteredAndSortedIdeas` on every render.
+1. User filters list (e.g. Hide "Approved").
+2. User opens an idea.
+3. User approves it.
+4. The idea updates status -> `filteredAndSortedIdeas` recalculates -> The idea disappears from the list.
+5. User presses "Down" (Next).
+6. The `findIdEx` fails or points to a random location because the reference list has changed.
+
+## Solution
+Implement a **Navigation Snapshot**.
+When the user selects an idea (enters Detail View), we freeze (snapshot) the current list of IDs. All selection navigation (Up/Down) while in that session operates on the *Snapshot*, not the live list.
+
+## Changes
+
+### [src/renderer/pages/Library.tsx](file:///Users/heymarcell/DEV/coloring-generator/src/renderer/pages/Library.tsx)
+
+1.  **Add State:**
+    ```typescript
+    const [navigationSnapshot, setNavigationSnapshot] = useState<Idea[] | null>(null);
+    ```
+
+2.  **Snapshot on Select:**
+    Update `setSelectedIdea` call sites:
+    ```typescript
+    const handleSelectIdea = (idea: Idea) => {
+      setNavigationSnapshot(filteredAndSortedIdeas);
+      setSelectedIdea(idea);
+    };
+    ```
+
+3.  **Clear Snapshot on Close:**
+    ```typescript
+    const handleCloseDetail = () => {
+      setSelectedIdea(null);
+      setNavigationSnapshot(null);
+    };
+    ```
+
+4.  **Update Keyboard Logic:**
+    In the `useEffect` for keydown:
+    - Use `navigationSnapshot` if it exists.
+    - `const listToUse = navigationSnapshot || filteredAndSortedIdeas;`
+    - Calculate next/prev index based on `listToUse`.
+
+## Verification
+1.  Filter list to exclude "Approved".
+2.  Open an idea.
+3.  Approve it (it should visually vanish from the background grid, but Detail View stays).
+4.  Press Down Arrow.
+5.  It should correctly navigate to the *next* item in the original order.

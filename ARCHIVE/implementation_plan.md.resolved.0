@@ -1,0 +1,392 @@
+# HuePress Art Factory - M0 Implementation Plan
+
+> **Goal:** Establish a secure, production-ready Electron shell with database persistence, proper IPC boundaries, and the foundational architecture for subsequent milestones.
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Build Tool Decision:** This plan uses **Electron Forge + Vite** as recommended in the PRD. Forge is the official Electron tooling with better ecosystem integration. The Vite plugin is marked "experimental" but is widely used and actively maintained.
+
+> [!IMPORTANT]
+> **API Key Storage:** The plan includes keychain integration via `keytar` for secure API key storage. This requires native module compilation. An alternative is `safeStorage` from Electron core (simpler, no native deps, but stores in app-specific location).
+
+---
+
+## Proposed Changes
+
+### Core Architecture
+
+```mermaid
+graph TB
+    subgraph Renderer["Renderer Process (Sandboxed)"]
+        React["React + TypeScript UI"]
+        Store["Zustand Store"]
+        RQ["React Query"]
+    end
+    
+    subgraph Preload["Preload Script"]
+        API["window.huepress API"]
+        CB["contextBridge"]
+    end
+    
+    subgraph Main["Main Process (Node.js)"]
+        IPC["IPC Handlers"]
+        DB["SQLite (better-sqlite3)"]
+        FS["File System"]
+        Queue["Job Queue"]
+        Gemini["Gemini API Client"]
+        Keychain["Keychain (keytar)"]
+    end
+    
+    React --> Store
+    React --> RQ
+    RQ --> API
+    API --> CB
+    CB --> IPC
+    IPC --> DB
+    IPC --> FS
+    IPC --> Queue
+    Queue --> Gemini
+    IPC --> Keychain
+```
+
+---
+
+### Project Structure
+
+#### [NEW] Project root layout
+
+```
+coloring-generator/
+├── .vscode/                    # Editor settings
+├── forge.config.ts             # Electron Forge configuration
+├── package.json
+├── tsconfig.json
+├── vite.main.config.ts         # Vite config for main process
+├── vite.preload.config.ts      # Vite config for preload
+├── vite.renderer.config.ts     # Vite config for renderer
+├── src/
+│   ├── main/                   # Main process code
+│   │   ├── index.ts            # Entry point
+│   │   ├── ipc/                # IPC handlers
+│   │   │   ├── index.ts
+│   │   │   ├── ideas.ts
+│   │   │   ├── jobs.ts
+│   │   │   └── settings.ts
+│   │   ├── database/           # SQLite layer
+│   │   │   ├── index.ts
+│   │   │   ├── schema.ts
+│   │   │   └── migrations/
+│   │   ├── services/           # Business logic
+│   │   │   ├── gemini.ts
+│   │   │   ├── queue.ts
+│   │   │   └── keychain.ts
+│   │   └── utils/
+│   │       ├── paths.ts        # Safe path handling
+│   │       └── logger.ts
+│   ├── preload/
+│   │   ├── index.ts            # Preload entry
+│   │   └── api.ts              # Exposed API types
+│   ├── renderer/               # React application
+│   │   ├── index.html
+│   │   ├── main.tsx
+│   │   ├── App.tsx
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── hooks/
+│   │   ├── stores/
+│   │   └── styles/
+│   └── shared/                 # Shared types/schemas
+│       ├── ipc-channels.ts     # Channel definitions
+│       ├── schemas.ts          # Zod schemas
+│       └── types.ts            # TypeScript types
+├── resources/                  # App resources (icons, etc.)
+└── tests/
+    ├── unit/
+    └── e2e/
+```
+
+---
+
+### Electron Configuration
+
+#### [NEW] [forge.config.ts](file:///Users/heymarcell/DEV/coloring-generator/forge.config.ts)
+
+Electron Forge configuration with Vite plugin, security-hardened BrowserWindow defaults, and packaging settings for macOS/Windows.
+
+**Key settings:**
+- `contextIsolation: true` (default since Electron 12)
+- `nodeIntegration: false`
+- `sandbox: true` (default since Electron 20)
+- Strict CSP via `webPreferences`
+- Vite plugin for fast HMR development
+
+---
+
+#### [NEW] [src/main/index.ts](file:///Users/heymarcell/DEV/coloring-generator/src/main/index.ts)
+
+Main process entry point with:
+- Secure BrowserWindow creation
+- Permission request handler (deny by default)
+- IPC handler registration
+- Database initialization
+- App lifecycle management
+
+---
+
+#### [NEW] [src/preload/index.ts](file:///Users/heymarcell/DEV/coloring-generator/src/preload/index.ts)
+
+Minimal preload exposing `window.huepress` API via `contextBridge`:
+
+```typescript
+// Type-safe IPC wrapper
+const huepressApi = {
+  // Ideas
+  ideas: {
+    importJsonArray: (data: string) => ipcRenderer.invoke('ideas:import-json-array', data),
+    list: (filters: IdeaFilters) => ipcRenderer.invoke('ideas:list', filters),
+    getById: (id: string) => ipcRenderer.invoke('ideas:get-by-id', id),
+    updateFields: (id: string, fields: Partial<Idea>) => 
+      ipcRenderer.invoke('ideas:update-fields', id, fields),
+  },
+  // Jobs
+  jobs: {
+    enqueue: (ideaIds: string[]) => ipcRenderer.invoke('jobs:enqueue', ideaIds),
+    cancel: (jobId: string) => ipcRenderer.invoke('jobs:cancel', jobId),
+    onProgress: (callback: (progress: JobProgress) => void) => 
+      ipcRenderer.on('jobs:progress', (_, data) => callback(data)),
+  },
+  // Settings
+  settings: {
+    get: () => ipcRenderer.invoke('settings:get'),
+    set: (settings: Partial<AppSettings>) => ipcRenderer.invoke('settings:set', settings),
+    setApiKey: (key: string) => ipcRenderer.invoke('settings:set-api-key', key),
+  },
+  // Export
+  export: {
+    run: (options: ExportOptions) => ipcRenderer.invoke('export:run', options),
+    selectFolder: () => ipcRenderer.invoke('export:select-folder'),
+  },
+};
+
+contextBridge.exposeInMainWorld('huepress', huepressApi);
+```
+
+---
+
+### Database Layer
+
+#### [NEW] [src/main/database/schema.ts](file:///Users/heymarcell/DEV/coloring-generator/src/main/database/schema.ts)
+
+SQLite schema using better-sqlite3:
+
+```sql
+-- Core tables
+CREATE TABLE IF NOT EXISTS batches (
+  id TEXT PRIMARY KEY,           -- ULID
+  name TEXT,
+  imported_at TEXT NOT NULL,     -- ISO 8601
+  item_count INTEGER NOT NULL,
+  raw_source TEXT                -- Optional retained JSON
+);
+
+CREATE TABLE IF NOT EXISTS ideas (
+  id TEXT PRIMARY KEY,           -- ArtID (ULID)
+  batch_id TEXT NOT NULL REFERENCES batches(id),
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  category TEXT NOT NULL,
+  skill TEXT NOT NULL,
+  tags TEXT,                     -- JSON array
+  extended_description TEXT,
+  fun_facts TEXT,                -- JSON array
+  suggested_activities TEXT,     -- JSON array
+  coloring_tips TEXT,            -- JSON array
+  therapeutic_benefits TEXT,     -- JSON array
+  meta_keywords TEXT,            -- JSON array
+  status TEXT NOT NULL DEFAULT 'Imported',
+  dedupe_hash TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS generation_attempts (
+  id TEXT PRIMARY KEY,           -- ULID
+  idea_id TEXT NOT NULL REFERENCES ideas(id),
+  type TEXT NOT NULL,            -- 'generate' | 'edit'
+  prompt_template_version TEXT NOT NULL,
+  request TEXT NOT NULL,         -- JSON serialized
+  response_meta TEXT,            -- JSON (model, safety, timings)
+  image_path TEXT,
+  image_sha256 TEXT,
+  qc_report TEXT,                -- JSON
+  created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS export_runs (
+  id TEXT PRIMARY KEY,
+  created_at TEXT NOT NULL,
+  destination TEXT NOT NULL,
+  items TEXT NOT NULL,           -- JSON array of idea IDs
+  profile_name TEXT,
+  result_log TEXT                -- JSON
+);
+
+-- Indexes for common queries
+CREATE INDEX IF NOT EXISTS idx_ideas_status ON ideas(status);
+CREATE INDEX IF NOT EXISTS idx_ideas_category ON ideas(category);
+CREATE INDEX IF NOT EXISTS idx_ideas_batch ON ideas(batch_id);
+CREATE INDEX IF NOT EXISTS idx_ideas_dedupe ON ideas(dedupe_hash);
+CREATE INDEX IF NOT EXISTS idx_attempts_idea ON generation_attempts(idea_id);
+```
+
+---
+
+### Shared Type Definitions
+
+#### [NEW] [src/shared/schemas.ts](file:///Users/heymarcell/DEV/coloring-generator/src/shared/schemas.ts)
+
+Zod schemas for validation (shared between main and tests):
+
+```typescript
+import { z } from 'zod';
+
+// Input JSON schema (what users paste)
+export const IdeaInputSchema = z.object({
+  title: z.string().min(1).max(200),
+  description: z.string().min(1).max(2000),
+  category: z.string().min(1).max(100),
+  skill: z.enum(['Easy', 'Medium', 'Detailed']), // Maps to 'Hard'
+  tags: z.array(z.string()).optional(),
+  extended_description: z.string().optional(),
+  fun_facts: z.array(z.string()).optional(),
+  suggested_activities: z.array(z.string()).optional(),
+  coloring_tips: z.array(z.string()).optional(),
+  therapeutic_benefits: z.array(z.string()).optional(),
+  meta_keywords: z.array(z.string()).optional(),
+});
+
+export const IdeaArraySchema = z.array(IdeaInputSchema);
+
+// Status enum
+export const IdeaStatus = z.enum([
+  'Imported',
+  'Queued',
+  'Generated',
+  'NeedsAttention',
+  'Approved',
+  'Exported',
+]);
+```
+
+---
+
+### Security Configuration
+
+#### [NEW] [src/main/security.ts](file:///Users/heymarcell/DEV/coloring-generator/src/main/security.ts)
+
+Security utilities and configuration:
+
+```typescript
+// Content Security Policy
+export const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'", // Required for some UI libs
+  "img-src 'self' data: file:",       // Local images
+  "font-src 'self'",
+  "connect-src 'self'",               // No external connections from renderer
+].join('; ');
+
+// Permission handler - deny all by default
+export function setupPermissionHandler(session: Electron.Session) {
+  session.setPermissionRequestHandler((webContents, permission, callback) => {
+    // Deny all permission requests
+    callback(false);
+  });
+}
+
+// Validate IPC payloads before processing
+export function validateIpcPayload<T>(
+  schema: z.ZodSchema<T>,
+  payload: unknown
+): T {
+  const result = schema.safeParse(payload);
+  if (!result.success) {
+    throw new Error(`Invalid IPC payload: ${result.error.message}`);
+  }
+  return result.data;
+}
+```
+
+---
+
+### Dependencies
+
+#### [NEW] [package.json](file:///Users/heymarcell/DEV/coloring-generator/package.json)
+
+Key dependencies:
+
+| Package | Purpose |
+|---------|---------|
+| `electron` | ^33.x (latest stable) |
+| `@electron-forge/cli` | Build tooling |
+| `@electron-forge/plugin-vite` | Vite integration |
+| `better-sqlite3` | SQLite for Node.js |
+| `electron-store` | Settings persistence |
+| `keytar` | OS keychain access |
+| `ulid` | Unique ID generation |
+| `zod` | Schema validation |
+| `react` + `react-dom` | UI framework |
+| `@tanstack/react-query` | Data fetching |
+| `zustand` | State management |
+| `react-router-dom` | Navigation |
+
+---
+
+## Verification Plan
+
+### Automated Tests
+
+```bash
+# Unit tests for core logic
+npm run test:unit
+
+# Tests to verify:
+# - Zod schema validation (valid/invalid JSON)
+# - Database migrations run idempotently
+# - IPC payload validation rejects bad data
+# - Path sanitization prevents traversal
+# - Dedupe hash generation is deterministic
+```
+
+### Security Audit Checklist
+
+- [ ] Verify `contextIsolation: true` in DevTools
+- [ ] Verify `nodeIntegration: false` - `require` undefined in renderer console
+- [ ] Verify `sandbox: true` - no direct Node APIs in renderer
+- [ ] Verify CSP blocks inline scripts
+- [ ] Verify permission requests are denied
+- [ ] Verify IPC handlers validate payloads
+
+### Manual Verification
+
+1. **Create/Open Project Flow**
+   - Launch app → project folder created with correct structure
+   - Close and reopen → data persists correctly
+   - Verify SQLite file exists at expected path
+
+2. **Security Verification**
+   - Open DevTools in renderer → confirm isolation
+   - Attempt `require('fs')` in console → should fail
+   - Inspect `window.huepress` → only exposed API visible
+
+---
+
+## Open Decisions for User Input
+
+1. **Keychain library:** Use `keytar` (requires native compilation) or Electron's built-in `safeStorage`?
+
+2. **React UI library:** Start with vanilla React/CSS or include a component library (e.g., Radix UI, shadcn/ui)?
+
+3. **Logging library:** `electron-log` (common choice) or structured JSON logging with pino?

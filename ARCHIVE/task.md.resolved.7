@@ -1,0 +1,85 @@
+# HuePress Art Factory - Development Tasks
+
+## Current Phase: M1 - Import + Library ✅ COMPLETE
+
+### [x] M0: Foundations ✅ COMPLETE
+
+- [x] Initialize Electron project with Electron Forge + Vite
+- [x] Configure secure Electron defaults (contextIsolation, sandbox, CSP)
+- [x] Set up TypeScript + React renderer
+- [x] Create preload script with minimal contextBridge API
+- [x] Set up SQLite database with better-sqlite3
+- [x] Create initial database schema and migrations
+- [x] Implement project folder layout (db/assets/exports)
+- [x] Create settings store (JSON-based, replaced electron-store)
+- [x] Add safeStorage integration for API key encryption
+- [x] Verify secure IPC boundary with type-safe channels
+- [x] Create path utilities (traversal prevention, sanitization)
+- [x] Create logger utilities (electron-log wrapper)
+- [x] Add Jobs IPC handler stubs (for M2)
+- [x] Create unit tests (Zod schemas, path utilities)
+- [x] Fix native module compilation (better-sqlite3 for Electron 39)
+
+---
+
+### [x] M1: Import + Library ✅ COMPLETE
+
+- [x] Import page with JSON paste and validation
+- [x] Wire Import page to IPC handlers
+- [x] Sample data loader for testing
+- [x] Import success/error feedback
+- [x] Flexible import (camelCase, comma-strings, Hard→Detailed)
+- [x] Dedupe detection (skips duplicates on import)
+- [x] Library grid view with cards
+- [x] Filter system (status filters)
+- [x] Search functionality
+- [x] Item detail panel (slide-in)
+- [x] Status change from detail panel
+- [x] Single item delete from detail panel
+- [x] Bulk selection mode
+- [x] Bulk delete
+- [x] Bulk status change
+- [x] List/grid view toggle
+
+---
+
+### [ ] M1.5: Library Enhancements (Future)
+
+- [ ] Sorting (asc/desc by name, category, skill, date added)
+- [ ] Category filter dropdown
+- [ ] Skill level filter
+- [ ] Batch rename UI
+- [ ] Virtualized list for 10k+ items (react-window)
+- [ ] Column resizing in list view
+- [ ] Keyboard shortcuts (Cmd+A, Delete, arrow keys)
+
+---
+
+### [ ] M2: Generation Pipeline
+
+- [ ] Gemini API client wrapper (`services/gemini.ts`)
+- [ ] Job queue implementation (`services/queue.ts`)
+- [ ] Prompt template engine with versioning
+- [ ] Image persistence + SHA256 checksums
+- [ ] Concurrency control and rate limiting
+- [ ] Retry logic with exponential backoff
+- [ ] Basic QC checks (B/W, borders, margins)
+- [ ] Generation attempt history tracking
+- [ ] Progress UI with cancellation
+
+### [ ] M3: Review + Iteration
+
+- [ ] Full review UI with large preview
+- [ ] Regenerate action
+- [ ] Modify action (text instruction)
+- [ ] Accept/Reject workflow
+- [ ] QC flags display and notes
+- [ ] Batch operations
+
+### [ ] M4: Export + Release
+
+- [ ] Export runner with profiles
+- [ ] Deterministic ArtID naming
+- [ ] JSON sidecar generation
+- [ ] Packaging per OS (macOS, Windows)
+- [ ] Code signing hooks

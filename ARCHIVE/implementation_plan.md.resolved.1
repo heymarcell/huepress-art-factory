@@ -1,0 +1,79 @@
+# M2: Generation Pipeline Implementation Plan
+
+**Goal**: Implement the robust background generation pipeline using Gemini API to create coloring pages from idea metadata.
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Gemini API Model**: We will use the `@google/generative-ai` package. We assume the user has access to image-capable models (e.g., Imagen 3) via the API key.
+> **Image Storage**: Images will be stored in `assets/images/{batchId}/{ideaId}.png`.
+
+## Proposed Changes
+
+### 1. Dependencies
+
+- Install `@google/generative-ai`.
+- Install `better-sqlite3` (already done).
+
+### 2. Services Layer
+
+#### [NEW] `src/main/services/gemini.ts`
+- **Class `GeminiService`**:
+  - `constructor(apiKey: string)`
+  - `generateImage(prompt: string, params: GenerationParams): Promise<Buffer>`
+  - Uses `imagen-3.0-generate-001` or compatible model.
+  - Handles rate limiting (429) and standard errors.
+
+#### [NEW] `src/main/services/queue.ts`
+- **Class `JobQueue`**:
+  - Manages concurrency (default 1-3 parallel jobs).
+  - `add(items: Idea[])`: specific ideas to queue.
+  - `processNext()`: Picks `Queued` items from DB.
+  - [cancel(jobId)](file:///Users/heymarcell/DEV/coloring-generator/src/preload/index.ts#113-118): Aborts specific job.
+  - Updates DB state (`Generating` -> `Generated` | `NeedsAttention`).
+  - Calls `GeminiService`.
+  - Saves images via `StorageService`.
+
+#### [NEW] `src/main/services/storage.ts`
+- **Class `StorageService`**:
+  - `saveImage(buffer: Buffer, ideaId: string, batchId: string): Promise<string>`
+  - Ensures directories exist.
+  - Returns absolute file path.
+  - Computes SHA256.
+
+### 3. Database Updates
+- **Table `generation_attempts`**:
+  - Already exists. Ensure schemas match our needs.
+- **Table `ideas`**:
+  - Status updates to `Generating`, `Generated`.
+
+### 4. IPC Handlers ([src/main/ipc/jobs.ts](file:///Users/heymarcell/DEV/coloring-generator/src/main/ipc/jobs.ts))
+
+#### [MODIFY] [src/main/ipc/jobs.ts](file:///Users/heymarcell/DEV/coloring-generator/src/main/ipc/jobs.ts)
+- Implement `JOBS_START(ids)`: Queues specific IDs.
+- Implement `JOBS_CANCEL(ids)`: Cancels jobs.
+- Implement `JOBS_GET_PROGRESS`: Returns active job stats.
+
+### 5. UI Updates
+
+#### [MODIFY] [src/renderer/pages/Library.tsx](file:///Users/heymarcell/DEV/coloring-generator/src/renderer/pages/Library.tsx)
+- Add "Generate Selected" button (visible when items selected).
+- Show progress indicator in header or global status bar.
+
+#### [MODIFY] [src/renderer/components/IdeaDetail.tsx](file:///Users/heymarcell/DEV/coloring-generator/src/renderer/components/IdeaDetail.tsx)
+- Add "Generate" button.
+- Display generated image if available (read from `file://` protocol or similar - note: Electron requires `file://` handling or custom protocol).
+- **Security Note**: We configured CSP to allow `file:`.
+
+## Verification Plan
+
+### Automated Tests
+- Unit tests for `JobQueue` logic (mocking Gemini).
+- Unit tests for `StorageService` (file writing).
+
+### Manual Verification
+- Set valid API key in Settings.
+- Select 1 idea -> Click Generate.
+- Verify status changes: `Queued` -> `Generating` -> `Generated`.
+- Verify image appears in Detail view.
+- Verify image file exists in `assets` folder.

@@ -1,0 +1,29 @@
+# Advanced Image Features Walkthrough
+
+## 1. Image Version Control
+- **Feature**: Users can now view history of all generation attempts for an idea.
+- **UI**: A "Versions" list of thumbnails appears below the main image in the Idea Detail panel.
+- **Action**: Clicking a thumbnail switches the active image for that idea (updates `selected_attempt_id` in database).
+- **Feedback**: The active version is highlighted with a blue border.
+
+## 2. Image Zoom (Lightbox)
+- **Feature**: Click on the main image in the Detail Panel to open a full-screen Lightbox view.
+- **UI**: High-resolution image on dark background. Click anywhere or X button to close.
+
+## 3. New 'Omitted' Status
+- **Feature**: 'Omitted' has been added to the status dropdown.
+- **Usage**: Use this to mark ideas that should be ignored/archived without deleting them.
+
+## 4. 'Approved' State Logic
+- **Feature**: When an idea is marked as 'Approved':
+  - The **Generate** button is disabled.
+  - The **Delete** button is disabled.
+- **Purpose**: Prevent accidental modification or deletion of finalized assets.
+
+## Files Modified
+*   [src/shared/schemas.ts](file:///Users/heymarcell/DEV/coloring-generator/src/shared/schemas.ts): Added `Omitted` status & [GenerationAttempt](file:///Users/heymarcell/DEV/coloring-generator/src/shared/schemas.ts#83-95) type.
+*   [src/shared/ipc-channels.ts](file:///Users/heymarcell/DEV/coloring-generator/src/shared/ipc-channels.ts): Added IPC channels.
+*   [src/preload/index.ts](file:///Users/heymarcell/DEV/coloring-generator/src/preload/index.ts): Exposed new API methods.
+*   [src/renderer/pages/Library.tsx](file:///Users/heymarcell/DEV/coloring-generator/src/renderer/pages/Library.tsx): Implemented version mutation & integration.
+*   [src/renderer/components/IdeaDetail.tsx](file:///Users/heymarcell/DEV/coloring-generator/src/renderer/components/IdeaDetail.tsx): Implemented UI for versions, zoom, and logic.
+*   [src/renderer/components/IdeaDetail.module.css](file:///Users/heymarcell/DEV/coloring-generator/src/renderer/components/IdeaDetail.module.css): Added styles for new UI elements.

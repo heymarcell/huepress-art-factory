@@ -1,0 +1,60 @@
+# HuePress Art Factory - Development Tasks
+
+## Current Phase: M0 - Foundations
+
+### [/] Planning & Setup
+
+- [/] Review PRD and create implementation plan
+- [ ] Get user approval on implementation plan and tech choices
+
+### [ ] M0: Foundations
+
+- [x] Initialize Electron project with Electron Forge + Vite
+- [ ] Configure secure Electron defaults (contextIsolation, sandbox, CSP)
+- [ ] Set up TypeScript + React renderer
+- [ ] Create preload script with minimal contextBridge API
+- [ ] Set up SQLite database with better-sqlite3
+- [ ] Create initial database schema and migrations
+- [ ] Implement project folder layout (db/assets/exports)
+- [ ] Create settings store with electron-store
+- [ ] Add keychain integration stub for API key storage
+- [ ] Verify secure IPC boundary with type-safe channels
+
+### [ ] M1: Import + Library
+
+- [ ] JSON array paste/import UI
+- [ ] Schema validation with Zod
+- [ ] Dedupe logic with content hashing
+- [ ] Batch management and persistence
+- [ ] Library grid/list view with virtualization
+- [ ] Filter system (status/category/skill/tags)
+- [ ] Item detail panel (metadata view)
+
+### [ ] M2: Generation Pipeline
+
+- [ ] Job queue with BullMQ-like semantics
+- [ ] Gemini API client wrapper
+- [ ] Prompt template engine with versioning
+- [ ] Image persistence + SHA256 checksums
+- [ ] Concurrency control and rate limiting
+- [ ] Retry logic with exponential backoff
+- [ ] Basic QC checks (B/W, borders, margins)
+- [ ] Generation attempt history tracking
+
+### [ ] M3: Review + Iteration
+
+- [ ] Full review UI with large preview
+- [ ] Regenerate action
+- [ ] Modify action (text instruction)
+- [ ] Accept/Reject workflow
+- [ ] QC flags display and notes
+- [ ] Batch operations
+
+### [ ] M4: Export + Release
+
+- [ ] Export runner with profiles
+- [ ] Deterministic ArtID naming
+- [ ] JSON sidecar generation
+- [ ] Packaging per OS (macOS, Windows)
+- [ ] Code signing hooks
+- [ ] Crash reporting + logging

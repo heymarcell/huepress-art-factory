@@ -1,0 +1,11 @@
+- [x] Review [prompts.ts](file:///Users/heymarcell/DEV/coloring-generator/test-prompts.ts) for age suitability
+- [x] Refine `Easy` skill (2-5 years): Big shapes, bold lines, minimal detail
+- [x] Refine `Medium` skill (5-8 years): Balanced detail, playful themes
+- [x] Refine `Detailed` skill (8+ years): Intricate patterns, mindfulness focus
+- [x] Align prompts with "HuePress Design Bible" (L1-L4 mapping)
+- [x] Verify specific design constraints (6pt lines, region counts) against external market research
+- [x] Make final adjustments if market data contradicts internal docs
+- [x] Strip `Fun Facts` and `Coloring Tips` from Gemini prompt payload
+- [x] Ensure `extendedDescription` and `tags` are included for visual context
+- [x] **Iteration 1**: Add "Complexity Scrubber" rule (Failed).
+- [x] **Iteration 2**: Add "CRITICAL IGNORE" command for Easy mode to override user descriptions.

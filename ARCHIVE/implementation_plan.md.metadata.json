@@ -1,0 +1,6 @@
+{
+  "artifactType":  "ARTIFACT_TYPE_IMPLEMENTATION_PLAN",
+  "summary":  "Add ESC logic for Lightbox/Detail. Implement advanced Lightbox with Zoom/Pan controls.",
+  "updatedAt":  "2025-12-31T23:29:55.829257Z",
+  "version":  "7"
+}

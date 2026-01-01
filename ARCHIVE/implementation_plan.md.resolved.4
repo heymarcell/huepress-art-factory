@@ -1,0 +1,122 @@
+# M2: Generation Pipeline Implementation Plan
+
+**Goal**: Implement the robust background generation pipeline using Gemini API to create coloring pages from idea metadata.
+
+## User Review Required
+
+> [!IMPORTANT] > **Gemini API Model**: We will use the `@google/generative-ai` package. We assume the user has access to image-capable models (e.g., Imagen 3) via the API key.
+> **Image Storage**: Images will be stored in `assets/images/{batchId}/{ideaId}.png`.
+
+## Proposed Changes
+
+### 1. Dependencies
+
+- Install `@google/generative-ai`.
+- Install `better-sqlite3` (already done).
+
+### 2. Services Layer
+
+#### [NEW] [src/main/services/gemini.ts](file:///Users/heymarcell/DEV/coloring-generator/src/main/services/gemini.ts)
+
+- **Class [GeminiService](file:///Users/heymarcell/DEV/coloring-generator/src/main/services/gemini.ts#10-91)**:
+  - [constructor(apiKey: string)](file:///Users/heymarcell/DEV/coloring-generator/src/main/services/gemini.ts#13-16)
+  - [generateImage(prompt: string, params: GenerationParams): Promise<Buffer>](file:///Users/heymarcell/DEV/coloring-generator/src/main/services/gemini.ts#17-90)
+  - Uses `imagen-3.0-generate-001` or compatible model.
+  - Handles rate limiting (429) and standard errors.
+
+#### [NEW] [src/main/services/queue.ts](file:///Users/heymarcell/DEV/coloring-generator/src/main/services/queue.ts)
+
+- **Class [JobQueue](file:///Users/heymarcell/DEV/coloring-generator/src/main/services/queue.ts#11-194)**:
+  - Manages concurrency (default 1-3 parallel jobs).
+  - [add(items: Idea[])](file:///Users/heymarcell/DEV/coloring-generator/src/main/services/queue.ts#39-55): specific ideas to queue.
+  - `processNext()`: Picks `Queued` items from DB.
+  - [cancel(jobId)](file:///Users/heymarcell/DEV/coloring-generator/src/preload/index.ts#124-129): Aborts specific job.
+  - Updates DB state (`Generating` -> `Generated` | `NeedsAttention`).
+  - Calls [GeminiService](file:///Users/heymarcell/DEV/coloring-generator/src/main/services/gemini.ts#10-91).
+  - Saves images via [StorageService](file:///Users/heymarcell/DEV/coloring-generator/src/main/services/storage.ts#8-43).
+
+#### [NEW] [src/main/services/storage.ts](file:///Users/heymarcell/DEV/coloring-generator/src/main/services/storage.ts)
+
+- **Class [StorageService](file:///Users/heymarcell/DEV/coloring-generator/src/main/services/storage.ts#8-43)**:
+  - [saveImage(buffer: Buffer, ideaId: string, batchId: string): Promise<string>](file:///Users/heymarcell/DEV/coloring-generator/src/main/services/storage.ts#9-42)
+  - Ensures directories exist.
+  - Returns absolute file path.
+  - Computes SHA256.
+
+### 3. Database Updates
+
+- **Table `generation_attempts`**:
+  - Already exists. Ensure schemas match our needs.
+- **Table `ideas`**:
+  - Status updates to `Generating`, `Generated`.
+
+### 4. Skill-Based System Prompts [NEW]
+
+#### [MODIFY] [src/main/services/prompts.ts](file:///Users/heymarcell/DEV/coloring-generator/src/main/services/prompts.ts)
+- Remove static `SYSTEM_INSTRUCTION`.
+- Export `getSystemInstruction(skill: string)` function.
+- Implement the 3 separate JSON schemas provided by the user (Easy, Medium, Detailed).
+
+#### [MODIFY] [src/main/services/gemini.ts](file:///Users/heymarcell/DEV/coloring-generator/src/main/services/gemini.ts)
+- In [generateImage](file:///Users/heymarcell/DEV/coloring-generator/src/main/services/gemini.ts#17-90), parse `userInput` (JSON) to extract `skill`.
+- Call `getSystemInstruction(skill)` to get the specific config for the request.
+- Pass this dynamic instruction to `generateContentStream`.
+
+### 5. IPC Handlers ([src/main/ipc/jobs.ts](file:///Users/heymarcell/DEV/coloring-generator/src/main/ipc/jobs.ts))
+
+#### [MODIFY] [src/main/ipc/jobs.ts](file:///Users/heymarcell/DEV/coloring-generator/src/main/ipc/jobs.ts)
+
+- Implement `JOBS_START(ids)`: Queues specific IDs.
+- Implement `JOBS_CANCEL(ids)`: Cancels jobs.
+- Implement `JOBS_GET_PROGRESS`: Returns active job stats.
+
+### 5. UI Updates
+
+#### [MODIFY] [src/renderer/pages/Library.tsx](file:///Users/heymarcell/DEV/coloring-generator/src/renderer/pages/Library.tsx)
+
+- Add "Generate Selected" button (visible when items selected).
+- Show progress indicator in header or global status bar.
+
+#### [MODIFY] [src/renderer/components/IdeaDetail.tsx](file:///Users/heymarcell/DEV/coloring-generator/src/renderer/components/IdeaDetail.tsx)
+
+- Add "Generate" button.
+- Display generated image if available (read from `file://` protocol or similar - note: Electron requires `file://` handling or custom protocol).
+- **Security Note**: We configured CSP to allow `file:`.
+
+### 6. UI Polish (Post-M2)
+
+#### [MODIFY] [IdeaDetail.tsx](file:///Users/heymarcell/DEV/coloring-generator/src/renderer/components/IdeaDetail.tsx)
+
+- Remove Zoom overlay.
+- Implement streaming logs state.
+- Add indeterminate progress bar.
+- Update header and status dropdown.
+
+#### [MODIFY] [IdeaDetail.module.css](file:///Users/heymarcell/DEV/coloring-generator/src/renderer/components/IdeaDetail.module.css)
+
+- Header alignment fixes.
+- Status dropdown styling.
+- Progress bar and log text animations.
+
+## Verification Plan
+
+### Automated Tests
+
+- Unit tests for [JobQueue](file:///Users/heymarcell/DEV/coloring-generator/src/main/services/queue.ts#11-194) logic (mocking Gemini).
+- Unit tests for [StorageService](file:///Users/heymarcell/DEV/coloring-generator/src/main/services/storage.ts#8-43) (file writing).
+
+### Manual Verification
+
+- Set valid API key in Settings.
+- Select 1 idea -> Click Generate.
+- Verify status changes: `Queued` -> `Generating` -> `Generated`.
+- Verify image appears in Detail view.
+- Verify image file exists in `assets` folder.
+
+### 7. Debugging & Polish Checks
+
+- [x] Fix Gemini 400 Invalid Argument Error (Model & Config).
+- [x] Implement Auto-switch to new version on generation complete.
+- [x] Add resolution badge (top-left) to image preview.
+- [x] Fix generation timer resetting when switching versions.
+- [x] Ensure resolution badge is visible (fix opacity animation).

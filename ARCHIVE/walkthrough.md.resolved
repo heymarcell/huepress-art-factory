@@ -1,0 +1,90 @@
+# Advanced Image Features Walkthrough
+
+## 1. Image Version Control
+
+- **Feature**: Users can now view history of all generation attempts for an idea.
+- **UI**: A "Versions" list of thumbnails appears below the main image in the Idea Detail panel.
+- **Action**: Clicking a thumbnail switches the active image for that idea (updates `selected_attempt_id` in database).
+- **Feedback**: The active version is highlighted with a blue border.
+
+## 2. Image Zoom (Lightbox)
+
+- **Feature**: Click on the main image in the Detail Panel to open a full-screen Lightbox view.
+- **UI**: High-resolution image on dark background. Click anywhere or X button to close.
+
+## 3. New 'Omitted' Status
+
+- **Feature**: 'Omitted' has been added to the status dropdown.
+- **Usage**: Use this to mark ideas that should be ignored/archived without deleting them.
+
+## 4. 'Approved' State Logic
+
+- **Feature**: When an idea is marked as 'Approved':
+  - The **Generate** button is disabled.
+  - The **Delete** button is disabled.
+- **Purpose**: Prevent accidental modification or deletion of finalized assets.
+
+## Files Modified
+
+- [src/shared/schemas.ts](file:///Users/heymarcell/DEV/coloring-generator/src/shared/schemas.ts): Added `Omitted` status & [GenerationAttempt](file:///Users/heymarcell/DEV/coloring-generator/src/shared/schemas.ts#83-95) type.
+- [src/shared/ipc-channels.ts](file:///Users/heymarcell/DEV/coloring-generator/src/shared/ipc-channels.ts): Added IPC channels.
+- [src/preload/index.ts](file:///Users/heymarcell/DEV/coloring-generator/src/preload/index.ts): Exposed new API methods.
+- [src/renderer/pages/Library.tsx](file:///Users/heymarcell/DEV/coloring-generator/src/renderer/pages/Library.tsx): Implemented version mutation & integration.
+- [src/renderer/components/IdeaDetail.tsx](file:///Users/heymarcell/DEV/coloring-generator/src/renderer/components/IdeaDetail.tsx): Implemented UI for versions, zoom, and logic.
+- [src/renderer/components/IdeaDetail.module.css](file:///Users/heymarcell/DEV/coloring-generator/src/renderer/components/IdeaDetail.module.css): Added styles for new UI elements.
+
+## 5. UI Refresh (Side-by-Side Layout)
+
+- **Expanded Drawer**: Width increased to 1000px for a better viewing experience.
+- **Side-by-Side View**:
+  - Left: Large image preview with dark background and version history.
+  - Right: Scrollable details panel.
+- **Keyboard Shortcuts**: Added support for Arrow keys (navigation), `G` (Generate), and `A` (Approve).
+
+## Debugging & Polish Session
+
+### Gemini Generation Fixes
+
+- **Model Update**: Switched to `gemini-3-pro-image-preview` for high-quality vector art.
+- **Config Correction**: Resolved "Invalid Argument" and "Media resolution not enabled" errors.
+  - Removed `mediaResolution` (input-only parameter).
+  - Used `imageConfig: { imageSize: '4K' }` for correct Ultra-High Definition output.
+- **Prompt Engineering**: Reverted to JSON input structure to play nicely with the detailed `SYSTEM_INSTRUCTION` JSON.
+
+### UX Improvements
+
+- **Auto-Switch**: The UI now automatically selects and displays the newly generated image immediately upon completion, thanks to a backend update to `selected_attempt_id`.
+- **Keyboard Navigation**: Added Left/Right arrow key support to browse through generation attempts (versions) in the Detail view.
+- **Resolution Badge**: Added a small badge in the top-left corner of the image preview to display the actual rendered dimensions (e.g., 4096 x 4096).
+  - Fixed visibility issue (added missing fade-in animation).
+- **Timer Stability**: Fixed an issue where the generation timer would reset when browsing history versions. The timer now strictly tracks the _current generation's_ start time and is unaffected by navigation.
+
+## 6. Verification: "Bold & Easy" Strategy
+
+The new Strategist Prompt was tested against the "Animals" category (Easy Mode/Age 2-5). The results confirm the strict adherence to:
+
+1.  **Single Subject Constraint:** No "Tea Sets" or "Forest Scenes" generated.
+2.  **Visual Simplicity:** Thick lines, no shading, minimal distractions.
+3.  **Trend Alignment:** Successfully generated "Capybara", "Axolotl", and "Sloth" as requested.
+
+### Verified Outputs (Easy Mode) I
+
+```carousel
+![Cute Capybara with Orange Slice](/Users/heymarcell/.gemini/antigravity/brain/0422553d-af39-4f13-889f-48cce563831d/uploaded_image_0_1767221631389.png)
+<!-- slide -->
+![Smiling Axolotl with Flower Crown](/Users/heymarcell/.gemini/antigravity/brain/0422553d-af39-4f13-889f-48cce563831d/uploaded_image_1_1767221631389.png)
+<!-- slide -->
+![Sleepy Sloth Hugging a Pillow](/Users/heymarcell/.gemini/antigravity/brain/0422553d-af39-4f13-889f-48cce563831d/uploaded_image_2_1767221631389.png)
+```
+
+### Verified Outputs (Medium Mode)
+
+The "Medium" level successfully introduces "Environmental Context" (waves) and "Interaction" (holding starfish) while maintaining the bold aesthetic.
+
+```
+
+### Verified Outputs (Detailed Mode)
+
+The "Detailed" level successfully shifts to "Pattern-Based" complexity (snowflakes, scarf patterns) rather than "Tiny Lines," aligning with the "Mindful/Dopamine Decor" aesthetic.
+
+![Baby Penguin with a Scarf](/Users/heymarcell/.gemini/antigravity/brain/0422553d-af39-4f13-889f-48cce563831d/uploaded_image_1767222265339.png)

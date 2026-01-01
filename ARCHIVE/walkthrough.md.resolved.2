@@ -1,0 +1,109 @@
+# HuePress Art Factory - M1 Import + Library Walkthrough
+
+> **Milestone Completed**: M1 + M1.5 (Import & Library)
+> **Date**: 2024-12-31
+
+## Summary
+
+Successfully implemented the core content management features: flexible JSON importing, a feature-rich Library with sorting/filtering, and bulk management tools. Messages from the import process are now robust and user-friendly.
+
+---
+
+## New Features
+
+### 1. Flexible Import System 📦
+
+- **Smart Parsing**: Accepts `camelCase` or `snake_case` JSON keys.
+- **Format Handling**: Converts comma-separated strings to arrays automatically.
+- **Skill Normalization**: Automatically maps "Hard" skill level to "Detailed".
+- **Validation**: Strict Zod schema validation with clear error messages.
+- **Deduplication**: Skips duplicate ideas based on content hash.
+
+### 2. Enhanced Library UI 📚
+
+- **Views**: Toggle between **Grid View** (visual cards) and **List View** (dense rows).
+- **Sorting**: Sort by **Name**, **Category**, **Skill**, **Date Added**, or **Status** (Ascending/Descending).
+- **Filtering**:
+  - **Status Chips**: Multi-select filters for workflow states (e.g., Imported + Approved).
+  - **Category Dropdown**: Dynamic list of all available categories.
+  - **Skill Dropdown**: Filter by difficulty level.
+  - **Filter Badge**: Shows count of active filters.
+
+### 3. Bulk Management ⚡
+
+- **Selection Mode**: Toggle selection mode to choose multiple items.
+- **Batch Actions**:
+  - **Bulk Status Change**: Update status for all selected items at once.
+  - **Bulk Delete**: Remove multiple items with one confirmation.
+  - **Select All / Deselect All**: Quick controls for large lists.
+
+### 4. Detail Panel 🔎
+
+- **Slide-over UI**: View full details without leaving the context.
+- **Quick Actions**: Approve, Delete, or change Status directly from the panel.
+- **Rich Metadata**: Displays tags, fun facts, coloring tips, and therapeutic benefits.
+
+---
+
+## Technical Highlights
+
+- **React Query**: Efficient data fetching with automatic cache invalidation on mutations.
+- **Optimistic UI**: Instant feedback on status changes and deletions.
+- **Compound Filters**: Filter logic runs client-side for immediate responsiveness on small datasets (<1000 items).
+- **CSS Modules**: Scoped styling with a consistent "Industrial Adobe" design system.
+
+---
+
+## Next Steps: M2 Generation Pipeline 🚀
+
+The next phase will focus on the core value proposition: generating coloring pages from these ideas.
+
+1. **Gemini Integration**: Connect to Google's Gemini API.
+2. **Job Queue**: Robust background processing for generation tasks.
+3. **Image Pipeline**: Saving generated images, generating thumbnails, and basic QC.
+
+---
+
+## Milestone M2: Generation Pipeline 🎨
+
+> **Milestone Completed**: M2 (Generation Pipeline)
+> **Date**: 2024-12-31
+
+### Summary
+
+The core generation pipeline is now operational. We successfully integrated Google's Gemini API for image generation, built a robust background job queue to manage concurrency, and updated the UI to support generation workflows.
+
+### New Features
+
+#### 1. Gemini AI Integration 🤖
+- **Service Layer**: Dedicated [GeminiService](file:///Users/heymarcell/DEV/coloring-generator/src/main/services/gemini.ts#7-66) using Google's `generative-ai` SDK.
+- **Prompt Engineering**: Structured prompts transform idea metadata (title, description, tags) into coloring page specifications.
+- **Model**: Configured for `imagen-3.0-generate-001`.
+
+#### 2. Robust Job Queue ⚙️
+- **Background Processing**: Jobs run in the main process, decoupled from UI.
+- **Concurrency Control**: Limits active generations to prevent rate limiting (default: 1 concurrent).
+- **Persistence**: Images are saved with SHA256 checksums and automatically organized by project structure.
+- **State Management**: Tracks `Queued` -> `Generating` -> `Generated` (or `Failed`) states.
+
+#### 3. Generation UI 🖼️
+- **Generate Action**: "Generate" button added to Idea Detail panel.
+- **Bulk Generation**: Select multiple ideas in the Library and queue them all at once.
+- **Visual Feedback**:
+  - Image placeholders for ungenerated ideas.
+  - "Generating..." loading state with spinner.
+  - Automatic image preview using secure `asset://` protocol once generated.
+
+### Screenshots
+
+**Idea Detail with Generate Button**
+![Idea Detail](file:///Users/heymarcell/.gemini/antigravity/brain/0422553d-af39-4f13-889f-48cce563831d/idea_detail_panel_1767206518618.png)
+
+**Generating State**
+![Generating State](file:///Users/heymarcell/.gemini/antigravity/brain/0422553d-af39-4f13-889f-48cce563831d/generating_state_1767206531649.png)
+
+**Bulk Generation Toolbar**
+![Bulk Actions](file:///Users/heymarcell/.gemini/antigravity/brain/0422553d-af39-4f13-889f-48cce563831d/bulk_actions_toolbar_1767206500490.png)
+
+## Next Steps: M3 Review + Iteration 🔍
+Refine the workflow with better review tools, regeneration capabilities, and detailed quality control checks.
