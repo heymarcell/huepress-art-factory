@@ -46,8 +46,11 @@ export function sanitizeFilename(filename: string): string {
  * Check if a path is within allowed directories
  */
 export function isPathAllowed(targetPath: string, allowedPaths: string[]): boolean {
-  const resolved = path.resolve(targetPath);
-  return allowedPaths.some((allowed) => resolved.startsWith(path.resolve(allowed)));
+  const resolvedTarget = path.resolve(targetPath).toLowerCase();
+  return allowedPaths.some((allowed) => {
+    const resolvedAllowed = path.resolve(allowed).toLowerCase();
+    return resolvedTarget.startsWith(resolvedAllowed);
+  });
 }
 
 /**

@@ -2,6 +2,7 @@ import { app, BrowserWindow, session, protocol } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 import log from 'electron-log/main';
+import { getSettings } from './ipc/settings';
 import { initializeDatabase, getAssetsPath, getDatabasePath } from './database';
 import { registerIpcHandlers } from './ipc';
 import { setupSecurity, CSP } from './security';
@@ -122,13 +123,25 @@ const initialize = async (): Promise<void> => {
     session.defaultSession.protocol.registerFileProtocol('asset', (request, callback) => {
       const url = request.url.replace('asset://', '');
       try {
-        const decodedUrl = decodeURIComponent(url);
+        let decodedUrl = decodeURIComponent(url);
+        
+        // Fix for Windows/Mac absolute paths sometimes missing leading slash in simple replacement
+        // If on macOS/Linux and path doesn't start with /, but looks like absolute path (e.g. Users/...)
+        if (process.platform !== 'win32' && !decodedUrl.startsWith('/')) {
+          decodedUrl = `/${decodedUrl}`;
+        }
         
         // Security check: only allow access to assets directory or userData
         const allowedPaths = [
           getAssetsPath(),
-          path.dirname(getDatabasePath()) // Allow accessing things in userData
+          path.dirname(getDatabasePath()), // Allow accessing things in userData
         ];
+
+        // Add configured assets path from settings if available
+        const settings = getSettings();
+        if (settings.assetsPath) {
+          allowedPaths.push(settings.assetsPath);
+        }
 
         if (!isPathAllowed(decodedUrl, allowedPaths)) {
           log.error(`Blocked unauthorized access to: ${decodedUrl}`);
