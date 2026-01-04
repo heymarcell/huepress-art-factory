@@ -95,6 +95,7 @@ function rowToIdea(row: Record<string, unknown>): Idea {
     status: row.status as Idea['status'],
     dedupe_hash: row.dedupe_hash as string,
     image_path: row.image_path as string | null | undefined,
+    svg_path: row.svg_path as string | null | undefined,
     selected_attempt_id: row.selected_attempt_id as string | null | undefined, 
     ignore_duplicates: row.ignore_duplicates as number | boolean | undefined,
     created_at: row.created_at as string,
@@ -318,7 +319,8 @@ export function registerIdeasHandlers(): void {
         COALESCE(
           (SELECT image_path FROM generation_attempts WHERE id = ideas.selected_attempt_id),
           (SELECT image_path FROM generation_attempts WHERE idea_id = ideas.id ORDER BY created_at DESC LIMIT 1)
-        ) as image_path
+        ) as image_path,
+        (SELECT svg_path FROM vectorize_results WHERE idea_id = ideas.id) as svg_path
         FROM ideas 
         ${whereClause}
         ORDER BY created_at DESC
@@ -353,7 +355,8 @@ export function registerIdeasHandlers(): void {
         COALESCE(
           (SELECT image_path FROM generation_attempts WHERE id = ideas.selected_attempt_id),
           (SELECT image_path FROM generation_attempts WHERE idea_id = ideas.id ORDER BY created_at DESC LIMIT 1)
-        ) as image_path
+        ) as image_path,
+        (SELECT svg_path FROM vectorize_results WHERE idea_id = ideas.id) as svg_path
         FROM ideas WHERE id = ?
       `).get(id) as Record<string, unknown> | undefined;
 

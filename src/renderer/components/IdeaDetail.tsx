@@ -32,6 +32,7 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
   const [showEditModal, setShowEditModal] = useState(false);
   const [editInstruction, setEditInstruction] = useState('');
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  const [viewFormat, setViewFormat] = useState<'png' | 'svg'>('png');
   const queryClient = useQueryClient();
 
   // Fetch attempts (history)
@@ -259,25 +260,54 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
       <div className={styles.overlay} onClick={onClose}>
         {/* ... (panel code remains same) ... */}
         <div className={styles.panel} onClick={(e) => e.stopPropagation()}>
-           {/* ... header ... */}
-           <header className={styles.header}>
-            <h2 className={styles.title}>{idea.title}</h2>
-            <div className={styles.headerActions}>
-              <div className={styles.badges}>
-                <select
-                  className={styles.statusSelect}
-                  value={idea.status}
-                  onChange={(e) => handleStatusChange(e.target.value as Idea['status'])}
-                >
-                  {STATUS_OPTIONS.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
-                <span className={styles.skillBadge}>{idea.skill}</span>
-                <span className={styles.categoryBadge}>{idea.category}</span>
+            {/* Header */}
+            <header className={styles.header}>
+              <h2 className={styles.title}>{idea.title}</h2>
+              <div className={styles.headerActions}>
+                <div className={styles.badges}>
+                  <select
+                    className={styles.statusSelect}
+                    value={idea.status}
+                    onChange={(e) => handleStatusChange(e.target.value as Idea['status'])}
+                  >
+                    {[...STATUS_OPTIONS, 'Vectorized'].map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                  <span className={styles.skillBadge}>{idea.skill}</span>
+                  <span className={styles.categoryBadge}>{idea.category}</span>
+                {/* Format Switch - Only show if SVG is available */}
+                {idea.svg_path && (
+                  <div className={styles.formatToggle}>
+                    <button 
+                      type="button"
+                      className={`${styles.formatBtn} ${viewFormat === 'png' ? styles.formatBtnActivePng : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        console.log('[IdeaDetail] Switched to PNG');
+                        setViewFormat('png');
+                      }}
+                    >
+                      PNG
+                    </button>
+                    <button 
+                      type="button"
+                      className={`${styles.formatBtn} ${viewFormat === 'svg' ? styles.formatBtnActiveSvg : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        console.log('[IdeaDetail] Switched to SVG');
+                        setViewFormat('svg');
+                      }}
+                    >
+                      SVG
+                    </button>
+                  </div>
+                )}
               </div>
+
+
               <div className={styles.separator} />
               <button className={styles.closeButton} onClick={onClose}>
                 <X size={18} />
@@ -289,31 +319,28 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
             {/* Left Side: Image & Versions */}
             <div className={styles.imageContainer}>
               {/* Main Image */}
-              <div className={styles.imageWrapper} onClick={() => idea.image_path && setShowLightbox(true)}>
-                {idea.image_path ? (
-                  <>
-                    <img 
-                      src={`asset://${idea.image_path}`} 
-                      alt={idea.title} 
-                      className={styles.image} 
-                      onLoad={(e) => {
-                        setResolution({
-                          w: e.currentTarget.naturalWidth,
-                          h: e.currentTarget.naturalHeight
-                        });
-                      }}
-                    />
-                    {resolution && (
-                      <div className={styles.resolutionBadge}>
-                         {resolution.w} x {resolution.h}
-                      </div>
-                    )}
-                    {isGenerating && (
-                      <div className={styles.overlayProgress}>
-                        {renderProgress()}
-                      </div>
-                    )}
-                  </>
+              {/* Main Image */}
+            <div className={styles.imageWrapper} onClick={() => (idea.image_path || idea.svg_path) && setShowLightbox(true)}>
+                {viewFormat === 'svg' && idea.svg_path ? (
+                  <img
+                    key="svg-view"
+                    src={`asset://${idea.svg_path}`}
+                    alt={`${idea.title} SVG`}
+                    className={styles.image}
+                  />
+                ) : idea.image_path ? (
+                  <img
+                    key="png-view"
+                    src={`asset://${idea.image_path}`}
+                    alt={idea.title}
+                    className={styles.image}
+                    onLoad={(e) => {
+                      setResolution({
+                        w: e.currentTarget.naturalWidth,
+                        h: e.currentTarget.naturalHeight
+                      });
+                    }}
+                  />
                 ) : (
                     <div className={styles.placeholder}>
                       {idea.status === 'Failed' ? (
@@ -331,10 +358,32 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
                       )}
                     </div>
                 )}
+
+                {/* Badge Overlay - Show for both formats if image exists */}
+                {((viewFormat === 'svg' && idea.svg_path) || (viewFormat === 'png' && idea.image_path)) && (
+                    <div className={styles.resolutionBadge} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                       {viewFormat === 'svg' ? (
+                         <span style={{ color: '#fbbf24', fontWeight: 'bold' }}>SVG VECTOR</span>
+                       ) : (
+                         <>
+                           <span>{resolution ? `${resolution.w} x ${resolution.h}` : 'Loading...'}</span>
+                           <span style={{ color: '#60a5fa', fontWeight: 'bold' }}>PNG</span>
+                         </>
+                       )}
+                    </div>
+                )}
+
+                {/* Progress Overlay */}
+                {isGenerating && (viewFormat === 'png' || !idea.svg_path) && (
+                  <div className={styles.overlayProgress}>
+                    {renderProgress()}
+                  </div>
+                )}
               </div>
 
               {/* Versions List */}
-              {validAttempts.length > 0 && (
+              {/* Versions List - Only show for PNG view */}
+              {viewFormat === 'png' && validAttempts.length > 0 && (
                 <>
                   <div className={styles.versionsLabel}>Versions ({validAttempts.length})</div>
                   <div className={styles.versionsList}>
@@ -665,7 +714,7 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
       </div>
 
       {/* Lightbox */}
-      {showLightbox && idea.image_path && (
+      {showLightbox && (idea.image_path || idea.svg_path) && (
         <div 
            className={styles.lightbox} 
            onClick={() => setShowLightbox(false)}
@@ -676,7 +725,7 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
            onMouseLeave={handleMouseUp}
         >
            <img 
-             src={`asset://${idea.image_path}`} 
+             src={`asset://${viewFormat === 'svg' ? idea.svg_path : idea.image_path}`} 
              alt={idea.title} 
              className={styles.lightboxImage} 
              onClick={(e) => e.stopPropagation()}

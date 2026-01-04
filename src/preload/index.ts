@@ -216,6 +216,69 @@ const huepressApi = {
   },
 
   // =========================================================================
+  // Vectorize - Image to SVG conversion
+  // =========================================================================
+  vectorize: {
+    /**
+     * Check vectorizer API health
+     */
+    checkHealth: (): Promise<IpcResponse<{ 
+      healthy: boolean; 
+      status?: string; 
+      version?: string; 
+      error?: string 
+    }>> => ipcRenderer.invoke(IPC_CHANNELS.VECTORIZE_HEALTH),
+
+    /**
+     * Submit single image for vectorization
+     */
+    submit: (ideaId: string): Promise<IpcResponse<{ 
+      jobId: string; 
+      ideaId: string; 
+      status: string 
+    }>> => ipcRenderer.invoke(IPC_CHANNELS.VECTORIZE_SUBMIT, ideaId),
+
+    /**
+     * Submit batch of images for vectorization
+     */
+    submitBatch: (ideaIds: string[]): Promise<IpcResponse<{ 
+      jobs: { ideaId: string; jobId: string; error?: string }[] 
+    }>> => ipcRenderer.invoke(IPC_CHANNELS.VECTORIZE_SUBMIT_BATCH, ideaIds),
+
+    /**
+     * Get vectorization job status
+     */
+    getStatus: (jobId: string): Promise<IpcResponse<{
+      jobId: string;
+      status: 'pending' | 'processing' | 'completed' | 'failed';
+      resultUrl?: string;
+      error?: string;
+    }>> => ipcRenderer.invoke(IPC_CHANNELS.VECTORIZE_GET_STATUS, jobId),
+
+    /**
+     * Download vectorized SVG result
+     */
+    download: (ideaId: string, jobId: string): Promise<IpcResponse<{
+      ideaId: string;
+      svgPath: string;
+      size: number;
+    }>> => ipcRenderer.invoke(IPC_CHANNELS.VECTORIZE_DOWNLOAD, { ideaId, jobId }),
+
+    /**
+     * List all vectorization jobs
+     */
+    listJobs: (): Promise<IpcResponse<Array<{
+      id: string;
+      idea_id: string;
+      status: string;
+      result_url: string | null;
+      error: string | null;
+      created_at: string;
+      updated_at: string;
+    }>>> => ipcRenderer.invoke(IPC_CHANNELS.VECTORIZE_LIST_JOBS),
+  },
+
+  // =========================================================================
   // Batch Jobs (Slow Mode Generation)
   // =========================================================================
   batch: {

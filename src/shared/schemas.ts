@@ -40,6 +40,7 @@ export const IdeaStatusSchema = z.enum([
   "NeedsAttention",
   "Failed",
   "Approved",
+  "Vectorized",
   "Exported",
   "Omitted",
 ]);
@@ -67,6 +68,7 @@ export interface Idea {
   status: IdeaStatus;
   dedupe_hash: string;
   image_path?: string | null;
+  svg_path?: string | null; // Added for vectorization
   selected_attempt_id?: string | null;
   ignore_duplicates?: number | boolean; 
   notes?: string | null; // Manual notes for the idea
@@ -150,6 +152,7 @@ export interface AppSettings {
   concurrency: number;
   promptTemplateVersion: string;
   theme: "light" | "dark" | "system";
+  vectorizerApiUrl: string | null;
 }
 
 // =============================================================================
@@ -159,7 +162,7 @@ export interface AppSettings {
 export interface ExportOptions {
   ideaIds: string[];
   destination: string;
-  format: "png" | "tiff";
+  format: "png" | "tiff" | "svg";
   includeSidecar: boolean;
   profileName?: string;
 }

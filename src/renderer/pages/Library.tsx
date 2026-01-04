@@ -36,6 +36,7 @@ const STATUS_OPTIONS: IdeaStatus[] = [
   'Failed',
   'Approved',
   'Exported',
+  'Vectorized',
   'Omitted',
 ];
 
@@ -1211,6 +1212,12 @@ function IdeaCard({ idea, isSelecting, isSelected, onToggleSelect, onClick, view
           {idea.status}
         </span>
         <span className={styles.skillBadge}>{idea.skill}</span>
+        {idea.image_path && (
+          <span className={styles.badgePng}>PNG</span>
+        )}
+        {idea.svg_path && (
+          <span className={styles.badgeSvg}>SVG</span>
+        )}
       </div>
       <h3 className={styles.cardTitle}>{idea.title}</h3>
       <p className={styles.cardDescription}>{idea.description}</p>

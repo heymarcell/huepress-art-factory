@@ -9,55 +9,63 @@
 
 export const IPC_CHANNELS = {
   // Ideas
-  IDEAS_IMPORT: 'ideas:import-json-array',
-  IDEAS_LIST: 'ideas:list',
-  IDEAS_GET_BY_ID: 'ideas:get-by-id',
-  IDEAS_UPDATE_FIELDS: 'ideas:update-fields',
-  IDEAS_DELETE: 'ideas:delete',
-  IDEAS_SET_STATUS: 'ideas:set-status',
-  IDEAS_GET_ATTEMPTS: 'ideas:get-attempts',
-  IDEAS_SET_VERSION: 'ideas:set-version',
-  IDEAS_FIND_DUPLICATES: 'ideas:find-duplicates',
-  IDEAS_EXPORT_JSON: 'ideas:export-json',
+  IDEAS_IMPORT: "ideas:import-json-array",
+  IDEAS_LIST: "ideas:list",
+  IDEAS_GET_BY_ID: "ideas:get-by-id",
+  IDEAS_UPDATE_FIELDS: "ideas:update-fields",
+  IDEAS_DELETE: "ideas:delete",
+  IDEAS_SET_STATUS: "ideas:set-status",
+  IDEAS_GET_ATTEMPTS: "ideas:get-attempts",
+  IDEAS_SET_VERSION: "ideas:set-version",
+  IDEAS_FIND_DUPLICATES: "ideas:find-duplicates",
+  IDEAS_EXPORT_JSON: "ideas:export-json",
 
   // Jobs
-  JOBS_ENQUEUE: 'jobs:enqueue',
-  JOBS_CANCEL: 'jobs:cancel',
-  JOBS_RETRY: 'jobs:retry',
-  JOBS_GET_STATS: 'jobs:get-stats',
-  JOBS_PROGRESS: 'jobs:progress', // Event channel
-  JOBS_STOP_ALL: 'jobs:stop-all', // Panic button
+  JOBS_ENQUEUE: "jobs:enqueue",
+  JOBS_CANCEL: "jobs:cancel",
+  JOBS_RETRY: "jobs:retry",
+  JOBS_GET_STATS: "jobs:get-stats",
+  JOBS_PROGRESS: "jobs:progress", // Event channel
+  JOBS_STOP_ALL: "jobs:stop-all", // Panic button
 
   // Batch Jobs (slow mode)
-  BATCH_SUBMIT: 'batch:submit',
-  BATCH_GET_STATUS: 'batch:get-status',
-  BATCH_LIST: 'batch:list',
-  BATCH_POLL: 'batch:poll',
+  BATCH_SUBMIT: "batch:submit",
+  BATCH_GET_STATUS: "batch:get-status",
+  BATCH_LIST: "batch:list",
+  BATCH_POLL: "batch:poll",
 
   // Generation
-  GEN_REGENERATE: 'gen:regenerate',
-  GEN_MODIFY: 'gen:modify',
-  GEN_GET_HISTORY: 'gen:get-history',
+  GEN_REGENERATE: "gen:regenerate",
+  GEN_MODIFY: "gen:modify",
+  GEN_GET_HISTORY: "gen:get-history",
 
   // Export
-  EXPORT_RUN: 'export:run',
-  EXPORT_SELECT_FOLDER: 'export:select-folder',
+  EXPORT_RUN: "export:run",
+  EXPORT_SELECT_FOLDER: "export:select-folder",
+
+  // Vectorize
+  VECTORIZE_HEALTH: "vectorize:health",
+  VECTORIZE_SUBMIT: "vectorize:submit",
+  VECTORIZE_SUBMIT_BATCH: "vectorize:submit-batch",
+  VECTORIZE_GET_STATUS: "vectorize:get-status",
+  VECTORIZE_DOWNLOAD: "vectorize:download",
+  VECTORIZE_LIST_JOBS: "vectorize:list-jobs",
 
   // Settings
-  SETTINGS_GET: 'settings:get',
-  SETTINGS_SET: 'settings:set',
-  SETTINGS_SET_API_KEY: 'settings:set-api-key',
-  SETTINGS_GET_API_KEY_STATUS: 'settings:get-api-key-status',
+  SETTINGS_GET: "settings:get",
+  SETTINGS_SET: "settings:set",
+  SETTINGS_SET_API_KEY: "settings:set-api-key",
+  SETTINGS_GET_API_KEY_STATUS: "settings:get-api-key-status",
 
   // Batches
-  BATCHES_LIST: 'batches:list',
-  BATCHES_GET_BY_ID: 'batches:get-by-id',
-  BATCHES_DELETE: 'batches:delete',
+  BATCHES_LIST: "batches:list",
+  BATCHES_GET_BY_ID: "batches:get-by-id",
+  BATCHES_DELETE: "batches:delete",
 
   // App
-  APP_GET_VERSION: 'app:get-version',
-  APP_SELECT_PROJECT_FOLDER: 'app:select-project-folder',
-  APP_GET_PROJECT_INFO: 'app:get-project-info',
+  APP_GET_VERSION: "app:get-version",
+  APP_SELECT_PROJECT_FOLDER: "app:select-project-folder",
+  APP_GET_PROJECT_INFO: "app:get-project-info",
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
@@ -74,6 +82,9 @@ export function successResponse<T>(data: T): IpcResponse<T> {
   return { success: true, data };
 }
 
-export function errorResponse(error: string, code?: string): IpcResponse<never> {
+export function errorResponse(
+  error: string,
+  code?: string
+): IpcResponse<never> {
   return { success: false, error, code };
 }

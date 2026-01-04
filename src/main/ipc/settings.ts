@@ -18,6 +18,7 @@ interface StoredSettings {
   theme: 'light' | 'dark' | 'system';
   hasApiKey: boolean;
   encryptedApiKey: string | null;
+  vectorizerApiUrl: string | null;
 }
 
 const defaults: StoredSettings = {
@@ -29,6 +30,7 @@ const defaults: StoredSettings = {
   theme: 'system',
   hasApiKey: false,
   encryptedApiKey: null,
+  vectorizerApiUrl: 'http://localhost:8000',
 };
 
 let settings: StoredSettings = { ...defaults };
@@ -96,6 +98,7 @@ export function registerSettingsHandlers(): void {
         concurrency: settings.concurrency,
         promptTemplateVersion: settings.promptTemplateVersion,
         theme: settings.theme,
+        vectorizerApiUrl: settings.vectorizerApiUrl,
       };
 
       return successResponse(result);
@@ -131,6 +134,9 @@ export function registerSettingsHandlers(): void {
       }
       if (partial.theme !== undefined) {
         settings.theme = partial.theme;
+      }
+      if (partial.vectorizerApiUrl !== undefined) {
+        settings.vectorizerApiUrl = partial.vectorizerApiUrl;
       }
 
       saveSettings();

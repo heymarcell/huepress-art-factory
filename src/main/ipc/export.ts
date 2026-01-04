@@ -98,18 +98,32 @@ export function registerExportHandlers(): void {
             continue;
           }
 
-          if (!idea.image_path) {
-            errors.push(`${idea.title}: No image generated`);
-            continue;
-          }
+          let sourcePath = '';
 
-          const imagePath = idea.image_path as string;
+          if (format === 'png') {
+            if (!idea.image_path) {
+              errors.push(`${idea.title}: No image generated`);
+              continue;
+            }
+            sourcePath = idea.image_path as string;
+          } else if (format === 'svg') {
+            // Need to fetch svg_path specifically as it wasn't in the initial selection
+            const svgResult = db.prepare('SELECT svg_path FROM vectorize_results WHERE idea_id = ?').get(ideaId) as { svg_path: string } | undefined;
+            if (!svgResult || !svgResult.svg_path) {
+               errors.push(`${idea.title}: No vectorized SVG found`);
+               continue;
+            }
+            sourcePath = svgResult.svg_path;
+          } else {
+             errors.push(`Unsupported format: ${format}`);
+             continue;
+          }
           
           // Check if source file exists
           try {
-            await fs.access(imagePath);
+            await fs.access(sourcePath);
           } catch {
-            errors.push(`${idea.title}: Image file not found`);
+            errors.push(`${idea.title}: Source file not found at ${sourcePath}`);
             continue;
           }
 
@@ -120,7 +134,7 @@ export function registerExportHandlers(): void {
           const destPath = path.join(destination, filename);
 
           // Copy image
-          await fs.copyFile(imagePath, destPath);
+          await fs.copyFile(sourcePath, destPath);
 
           // Generate sidecar JSON if requested
           if (includeSidecar) {

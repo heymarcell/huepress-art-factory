@@ -6,6 +6,7 @@ import { Library } from './pages/Library';
 import { Settings } from './pages/Settings';
 import { Export } from './pages/Export';
 import { BatchJobs } from './pages/BatchJobs';
+import { Vectorize } from './pages/Vectorize';
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="import" element={<Import />} />
           <Route path="library" element={<Library />} />
+          <Route path="vectorize" element={<Vectorize />} />
           <Route path="export" element={<Export />} />
           <Route path="batch-jobs" element={<BatchJobs />} />
           <Route path="settings" element={<Settings />} />

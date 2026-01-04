@@ -14,6 +14,7 @@ import {
   StopCircle,
   XCircle,
   Ban,
+  Wand2,
 } from 'lucide-react';
 import styles from './Dashboard.module.css';
 
@@ -89,6 +90,7 @@ export function Dashboard() {
     { label: 'Needs Review', value: byStatus.NeedsAttention || 0, icon: AlertCircle, color: 'error', filter: 'NeedsAttention' },
     { label: 'Failed', value: byStatus.Failed || 0, icon: XCircle, color: 'error', filter: 'Failed' },
     { label: 'Approved', value: byStatus.Approved || 0, icon: FileCheck, color: 'accent', filter: 'Approved' },
+    { label: 'Vectorized', value: byStatus.Vectorized || 0, icon: Wand2, color: 'accent', filter: 'Vectorized' },
     { label: 'Omitted', value: byStatus.Omitted || 0, icon: Ban, color: 'muted', filter: 'Omitted' },
     { label: 'Exported', value: byStatus.Exported || 0, icon: Package, color: 'muted', filter: 'Exported' },
   ];

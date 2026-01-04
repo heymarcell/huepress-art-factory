@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Folder,
@@ -16,7 +16,7 @@ export function Export() {
   const queryClient = useQueryClient();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [destination, setDestination] = useState<string>('');
-  const [format, setFormat] = useState<'png' | 'tiff'>('png');
+  const [format, setFormat] = useState<'png' | 'svg'>('png');
   const [includeSidecar, setIncludeSidecar] = useState(true);
   const [exportResult, setExportResult] = useState<{
     success: boolean;
@@ -28,8 +28,9 @@ export function Export() {
   const { data, isLoading } = useQuery({
     queryKey: ['ideas', 'exportable'],
     queryFn: async () => {
+      // Include Vectorized for SVG export possibility (or fetch all relevant)
       const result = await window.huepress.ideas.list({
-        status: ['Approved', 'Generated'],
+        status: ['Approved', 'Generated', 'Vectorized'],
         limit: 1000,
       });
       if (!result.success) throw new Error(result.error);
@@ -37,17 +38,22 @@ export function Export() {
     },
   });
 
-  // Filter ideas with images
-  const ideasWithImages = (data || []).filter((idea: Idea) => idea.image_path);
+  // Filter ideas logic:
+  // If PNG: must have image_path
+  // If SVG: must have svg_path
+  const ideasWithFormat = (data || []).filter((idea: Idea) => {
+    if (format === 'png') return !!idea.image_path;
+    if (format === 'svg') return !!idea.svg_path;
+    return false;
+  });
 
-  // Auto-select all on first load only
-  const hasInitializedRef = useRef(false);
+  // Auto-select all on first load or format change
+  // Auto-select all on first load or format change
   useEffect(() => {
-    if (!hasInitializedRef.current && ideasWithImages.length > 0) {
-      setSelectedIds(new Set(ideasWithImages.map((i: Idea) => i.id)));
-      hasInitializedRef.current = true;
-    }
-  }, [ideasWithImages]);
+    // Re-select all when format changes? Or keep selection if valid? 
+    // Let's reset selection on format change to avoid confusion (selecting ideas that don't satisfy format)
+    setSelectedIds(new Set(ideasWithFormat.map((i: Idea) => i.id)));
+  }, [format, ideasWithFormat.length]);
 
   // Selection Logic
   const toggleSelection = (id: string) => {
@@ -60,10 +66,10 @@ export function Export() {
   };
 
   const selectAll = () => {
-    if (selectedIds.size === ideasWithImages.length) {
+    if (selectedIds.size === ideasWithFormat.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(ideasWithImages.map((i: Idea) => i.id)));
+      setSelectedIds(new Set(ideasWithFormat.map((i: Idea) => i.id)));
     }
   };
 
@@ -182,10 +188,10 @@ export function Export() {
                 PNG
               </button>
               <button
-                className={`${styles.toggleBtn} ${format === 'tiff' ? styles.active : ''}`}
-                onClick={() => setFormat('tiff')}
+                className={`${styles.toggleBtn} ${format === 'svg' ? styles.active : ''}`}
+                onClick={() => setFormat('svg')}
               >
-                TIFF
+                SVG
               </button>
             </div>
             
@@ -202,7 +208,7 @@ export function Export() {
           <div className={styles.toolbarSpacer} />
           
            <button onClick={selectAll} className={styles.btnText}>
-            {selectedIds.size === ideasWithImages.length ? 'Deselect All' : 'Select All'}
+            {selectedIds.size === ideasWithFormat.length ? 'Deselect All' : 'Select All'}
           </button>
         </div>
 
@@ -213,15 +219,14 @@ export function Export() {
               <Loader2 size={32} className={styles.spin} />
               <p>Loading your masterpieces...</p>
             </div>
-          ) : ideasWithImages.length === 0 ? (
+          ) : ideasWithFormat.length === 0 ? (
             <div className={styles.empty}>
-              <p>No approved images to export.</p>
+              <p>No approved images to export for selected format.</p>
             </div>
           ) : (
             <>
-              {console.log('Rendering grid with', ideasWithImages.length, 'ideas')}
               <div className={styles.grid}>
-              {ideasWithImages.map((idea) => {
+              {ideasWithFormat.map((idea) => {
                 const isSelected = selectedIds.has(idea.id);
                 return (
                   <div
@@ -237,14 +242,21 @@ export function Export() {
                       )}
                     </div>
                     
-                    {idea.image_path && (
+                    {format === 'svg' && idea.svg_path ? (
+                      <img
+                        src={`asset://${idea.svg_path}`}
+                        alt={idea.title}
+                        className={styles.thumbnail}
+                        loading="lazy"
+                      />
+                    ) : idea.image_path ? (
                       <img
                         src={`asset://${idea.image_path}`}
                         alt={idea.title}
                         className={styles.thumbnail}
                         loading="lazy"
                       />
-                    )}
+                    ) : null}
                     
                     <div className={styles.cardInfo}>
                       <div className={styles.cardTitle}>{idea.title}</div>

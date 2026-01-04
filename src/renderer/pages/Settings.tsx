@@ -129,6 +129,31 @@ export function Settings() {
         </div>
       </section>
 
+      {/* Vectorizer API Section */}
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <Sliders size={16} />
+          <h2>Vectorizer API</h2>
+        </div>
+        <div className={styles.sectionContent}>
+          <div className={styles.settingRow}>
+            <div className={styles.settingInfo}>
+              <span className={styles.label}>API URL</span>
+              <span className={styles.hint}>External image-to-SVG service</span>
+            </div>
+            <input
+              type="text"
+              value={settings?.vectorizerApiUrl || 'http://localhost:8000'}
+              onChange={(e) =>
+                updateSettingsMutation.mutate({ vectorizerApiUrl: e.target.value })
+              }
+              className={styles.input}
+              style={{ width: '240px' }}
+            />
+          </div>
+        </div>
+      </section>
+
       {/* Generation Settings */}
       <section className={styles.section}>
         <div className={styles.sectionHeader}>

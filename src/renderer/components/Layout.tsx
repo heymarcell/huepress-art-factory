@@ -7,6 +7,7 @@ import {
   Settings,
   Layers,
   Download,
+  Wand2,
 } from 'lucide-react';
 import styles from './Layout.module.css';
 
@@ -14,6 +15,7 @@ const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/import', label: 'Import', icon: Import },
   { path: '/library', label: 'Library', icon: Library },
+  { path: '/vectorize', label: 'Vectorize', icon: Wand2 },
   { path: '/export', label: 'Export', icon: Download },
   { path: '/batch-jobs', label: 'Batch Jobs', icon: Layers },
   { path: '/settings', label: 'Settings', icon: Settings },
