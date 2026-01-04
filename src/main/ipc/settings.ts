@@ -187,6 +187,7 @@ export function registerSettingsHandlers(): void {
     try {
       return successResponse({
         hasApiKey: settings.hasApiKey,
+        hasWebApiKey: settings.hasWebApiKey || false,
         isEncrypted: safeStorage.isEncryptionAvailable(),
       });
     } catch (error) {

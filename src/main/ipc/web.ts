@@ -13,7 +13,7 @@ export function registerWebHandlers(): void {
 
       const settings = getSettings();
       const apiKey = getWebApiKey();
-      const apiUrl = settings.webApiUrl || 'https://huepress.co';
+      const apiUrl = settings.webApiUrl || 'https://api.huepress.co';
 
       if (!apiKey) {
         return errorResponse('Web API Key not configured. Please check Settings.');
@@ -70,6 +70,11 @@ export function registerWebHandlers(): void {
          }
       }
 
+      /* 
+       * [OPTIMIZATION] Skip uploading valid local PNGs (Thumbnails)
+       * The server processing queue will generate an optimized WebP thumbnail from the SVG source.
+       * This saves bandwidth (avoiding ~4MB uploads) and ensures consistent quality.
+       *
       // 2. Thumbnail (PNG)
       // Get selected attempt or latest
       const attempt = db.prepare(`
@@ -89,11 +94,14 @@ export function registerWebHandlers(): void {
             formData.append('thumbnail', blob, `${slug}.png`);
          }
       }
+      */
 
       log.info(`Syncing Idea ${ideaId} to ${apiUrl}...`);
+      log.info(`Payload: Title="${idea.title}", SVG=${(formData.get('source') as File)?.size ?? 0} bytes, Thumb=${(formData.get('thumbnail') as File)?.size ?? 0} bytes`);
+      const startTime = Date.now();
 
       // Upload
-      const response = await fetch(`${apiUrl}/api/assets`, {
+      const response = await fetch(`${apiUrl}/api/admin/assets`, {
         method: 'POST',
         headers: {
           'X-Admin-Key': apiKey
@@ -108,7 +116,8 @@ export function registerWebHandlers(): void {
       }
 
       const result = await response.json();
-      log.info(`Web Sync Success:`, result);
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      log.info(`Web Sync Success (${duration}s):`, result);
       
       // Update local status? Maybe not. Just return success.
       return successResponse(result);

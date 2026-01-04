@@ -158,7 +158,7 @@ export function Settings() {
             </div>
             <input
               type="text"
-              value={settings?.webApiUrl || 'https://huepress.co'}
+              value={settings?.webApiUrl || 'https://api.huepress.co'}
               onChange={(e) =>
                 updateSettingsMutation.mutate({ webApiUrl: e.target.value })
               }
@@ -181,13 +181,10 @@ export function Settings() {
                </span>
              )}
           </div>
-          <div className={styles.inputGroup}>
+          <div className={styles.inputGroup} style={{ marginTop: '16px' }}>
             <input
               type="password"
-              value={apiKey} // I should reuse apiKey state or make a new one? `apiKey` state is currently used for Gemini.
-              // I should probably introduce a separate state for webApiKey to avoid confusion if user types in both boxes.
-              // Use a local variable inside render? No, state.
-              // I will leave this for now and add a new state variable in a separate edit block at the top of component.
+              value={webApiKey}
               onChange={(e) => setWebApiKey(e.target.value)} 
               placeholder="Enter Admin API Key"
               className={styles.input}
