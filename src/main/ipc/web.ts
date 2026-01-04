@@ -48,9 +48,28 @@ export function registerWebHandlers(): void {
       if (idea.extended_description) formData.append('extended_description', idea.extended_description);
       if (idea.fun_facts) formData.append('fun_facts', idea.fun_facts);
       if (idea.suggested_activities) formData.append('suggested_activities', idea.suggested_activities);
-      if (idea.coloring_tips) formData.append('coloring_tips', idea.coloring_tips);
-      if (idea.therapeutic_benefits) formData.append('therapeutic_benefits', idea.therapeutic_benefits);
-      if (idea.meta_keywords) formData.append('meta_keywords', idea.meta_keywords);
+      
+      // These fields are stored as JSON arrays locally but web API expects plain text
+      // Convert: ["tip1", "tip2"] → "tip1\ntip2" for multi-line text fields
+      // Convert: ["kw1", "kw2"] → "kw1, kw2" for comma-separated SEO keywords
+      if (idea.coloring_tips) {
+        try {
+          const arr = JSON.parse(idea.coloring_tips);
+          formData.append('coloring_tips', Array.isArray(arr) ? arr.join('\n') : idea.coloring_tips);
+        } catch { formData.append('coloring_tips', idea.coloring_tips); }
+      }
+      if (idea.therapeutic_benefits) {
+        try {
+          const arr = JSON.parse(idea.therapeutic_benefits);
+          formData.append('therapeutic_benefits', Array.isArray(arr) ? arr.join('\n') : idea.therapeutic_benefits);
+        } catch { formData.append('therapeutic_benefits', idea.therapeutic_benefits); }
+      }
+      if (idea.meta_keywords) {
+        try {
+          const arr = JSON.parse(idea.meta_keywords);
+          formData.append('meta_keywords', Array.isArray(arr) ? arr.join(', ') : idea.meta_keywords);
+        } catch { formData.append('meta_keywords', idea.meta_keywords); }
+      }
 
       // Files
       const assetsPath = settings.assetsPath || getAssetsPath();
