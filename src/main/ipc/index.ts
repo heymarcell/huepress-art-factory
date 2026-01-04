@@ -8,6 +8,7 @@ import { registerJobsHandlers } from './jobs';
 import { registerExportHandlers } from './export';
 import { registerBatchHandlers } from './batch';
 import { registerVectorizeHandlers } from './vectorize';
+import { registerWebHandlers } from './web';
 
 /**
  * Register all IPC handlers
@@ -24,6 +25,7 @@ export function registerIpcHandlers(): void {
   registerExportHandlers();
   registerBatchHandlers();
   registerVectorizeHandlers();
+  registerWebHandlers(); // Register Web Sync Handlers
 
   // App-level handlers
   registerAppHandlers();

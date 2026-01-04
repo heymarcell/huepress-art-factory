@@ -19,6 +19,9 @@ interface StoredSettings {
   hasApiKey: boolean;
   encryptedApiKey: string | null;
   vectorizerApiUrl: string | null;
+  hasWebApiKey?: boolean; // Optional for backward compatibility
+  encryptedWebApiKey?: string | null;
+  webApiUrl: string | null;
 }
 
 const defaults: StoredSettings = {
@@ -31,6 +34,7 @@ const defaults: StoredSettings = {
   hasApiKey: false,
   encryptedApiKey: null,
   vectorizerApiUrl: 'http://localhost:8000',
+  webApiUrl: 'https://huepress.co',
 };
 
 let settings: StoredSettings = { ...defaults };
@@ -99,6 +103,7 @@ export function registerSettingsHandlers(): void {
         promptTemplateVersion: settings.promptTemplateVersion,
         theme: settings.theme,
         vectorizerApiUrl: settings.vectorizerApiUrl,
+        webApiUrl: settings.webApiUrl,
       };
 
       return successResponse(result);
@@ -137,6 +142,9 @@ export function registerSettingsHandlers(): void {
       }
       if (partial.vectorizerApiUrl !== undefined) {
         settings.vectorizerApiUrl = partial.vectorizerApiUrl;
+      }
+      if (partial.webApiUrl !== undefined) {
+        settings.webApiUrl = partial.webApiUrl;
       }
 
       saveSettings();
@@ -186,6 +194,44 @@ export function registerSettingsHandlers(): void {
       return errorResponse('Failed to get API key status');
     }
   });
+
+  // Set Web API key
+  ipcMain.handle(IPC_CHANNELS.SETTINGS_SET_WEB_API_KEY, async (_event, apiKey: unknown) => {
+    try {
+      if (typeof apiKey !== 'string') {
+        return errorResponse('API key must be a string');
+      }
+
+      if (!safeStorage.isEncryptionAvailable()) {
+        settings.encryptedWebApiKey = apiKey;
+      } else {
+        const encrypted = safeStorage.encryptString(apiKey);
+        settings.encryptedWebApiKey = encrypted.toString('base64');
+      }
+
+      settings.hasWebApiKey = true;
+      saveSettings();
+      log.info('Web API key stored securely');
+
+      return successResponse({ stored: true });
+    } catch (error) {
+      log.error('Error storing Web API key:', error);
+      return errorResponse('Failed to store Web API key');
+    }
+  });
+
+  // Get Web API key status
+  ipcMain.handle(IPC_CHANNELS.SETTINGS_GET_WEB_API_KEY_STATUS, async () => {
+    try {
+      return successResponse({
+        hasApiKey: settings.hasWebApiKey || false,
+        isEncrypted: safeStorage.isEncryptionAvailable(),
+      });
+    } catch (error) {
+      log.error('Error getting Web API key status:', error);
+      return errorResponse('Failed to get Web API key status');
+    }
+  });
 }
 
 /**
@@ -209,6 +255,24 @@ export function getApiKey(): string | null {
     return null;
   }
 }
+
+export function getWebApiKey(): string | null {
+    try {
+      if (!settings.hasWebApiKey || !settings.encryptedWebApiKey) {
+        return null;
+      }
+  
+      if (!safeStorage.isEncryptionAvailable()) {
+        return settings.encryptedWebApiKey;
+      }
+  
+      const encrypted = Buffer.from(settings.encryptedWebApiKey, 'base64');
+      return safeStorage.decryptString(encrypted);
+    } catch (error) {
+      log.error('Error decrypting Web API key:', error);
+      return null;
+    }
+  }
 
 export function getSettings(): StoredSettings {
   return settings;

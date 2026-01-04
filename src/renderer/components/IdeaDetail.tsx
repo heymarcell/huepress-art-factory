@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, Palette, Check, Tag, Lightbulb, Heart, FileText, Trash2, Image as ImageIcon, AlertCircle, Pencil } from 'lucide-react';
+import { X, Palette, Check, Tag, Lightbulb, Heart, FileText, Trash2, Image as ImageIcon, AlertCircle, Pencil, UploadCloud } from 'lucide-react';
 import type { Idea, GenerationAttempt } from '../../shared/schemas';
 import styles from './IdeaDetail.module.css';
 
@@ -32,6 +32,7 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
   const [showEditModal, setShowEditModal] = useState(false);
   const [editInstruction, setEditInstruction] = useState('');
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [viewFormat, setViewFormat] = useState<'png' | 'svg'>('png');
   const queryClient = useQueryClient();
 
@@ -693,6 +694,34 @@ export function IdeaDetail({ idea, onClose, onStatusChange, onDelete, onGenerate
                 <Trash2 size={14} />
               </button>
             )}
+            {/* Sync Button - Only show for Vectorized/Approved */}
+            {(idea.status === 'Vectorized' || idea.status === 'Approved') && (
+              <button
+                className={styles.actionButton}
+                onClick={async () => {
+                   if (isSyncing) return;
+                   setIsSyncing(true);
+                   try {
+                     const result = await window.huepress.web.sync(idea.id);
+                     if (result.success) {
+                       alert('Successfully synced to Web!');
+                     } else {
+                       alert(`Sync failed: ${result.error}`);
+                     }
+                   } catch (e: any) {
+                     alert(`Sync error: ${e.message}`);
+                   } finally {
+                     setIsSyncing(false);
+                   }
+                }}
+                disabled={isSyncing}
+                title="Push asset to HuePress Web"
+              >
+                <UploadCloud size={14} />
+                {isSyncing ? 'Syncing...' : 'Push to Web'}
+              </button>
+            )}
+
             {/* Edit Button - Only show when image exists */}
             {idea.image_path && (
               <button 

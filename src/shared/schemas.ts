@@ -153,6 +153,7 @@ export interface AppSettings {
   promptTemplateVersion: string;
   theme: "light" | "dark" | "system";
   vectorizerApiUrl: string | null;
+  webApiUrl: string | null;
 }
 
 // =============================================================================

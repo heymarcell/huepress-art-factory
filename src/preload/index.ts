@@ -194,8 +194,14 @@ const huepressApi = {
     /**
      * Check if API key is configured
      */
-    getApiKeyStatus: (): Promise<IpcResponse<{ hasApiKey: boolean; isEncrypted: boolean }>> =>
+    getApiKeyStatus: (): Promise<IpcResponse<{ hasApiKey: boolean; isEncrypted: boolean; hasWebApiKey?: boolean }>> =>
       ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_GET_API_KEY_STATUS),
+      
+    /**
+     * Store Web API key securely
+     */
+    setWebApiKey: (key: string): Promise<IpcResponse<{ stored: boolean }>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.SETTINGS_SET_WEB_API_KEY, key),
   },
 
   // =========================================================================
@@ -361,6 +367,16 @@ const huepressApi = {
         byStatus: Record<string, number>;
       };
     }>> => ipcRenderer.invoke(IPC_CHANNELS.APP_GET_PROJECT_INFO),
+  },
+  // =========================================================================
+  // Web Sync
+  // =========================================================================
+  web: {
+    /**
+     * Sync idea to Web API
+     */
+    sync: (ideaId: string): Promise<IpcResponse<{ id: string; url: string; [key: string]: any }>> =>
+      ipcRenderer.invoke(IPC_CHANNELS.WEB_SYNC, ideaId),
   },
 };
 

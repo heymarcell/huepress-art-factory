@@ -57,6 +57,11 @@ export const IPC_CHANNELS = {
   SETTINGS_SET_API_KEY: "settings:set-api-key",
   SETTINGS_GET_API_KEY_STATUS: "settings:get-api-key-status",
 
+  // Web Sync
+  WEB_SYNC: "web:sync",
+  SETTINGS_SET_WEB_API_KEY: "settings:set-web-api-key",
+  SETTINGS_GET_WEB_API_KEY_STATUS: "settings:get-web-api-key-status",
+
   // Batches
   BATCHES_LIST: "batches:list",
   BATCHES_GET_BY_ID: "batches:get-by-id",

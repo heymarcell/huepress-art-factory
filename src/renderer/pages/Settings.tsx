@@ -73,6 +73,21 @@ export function Settings() {
     }
   };
 
+  const [webApiKey, setWebApiKey] = useState('');
+
+  const saveWebApiKeyMutation = useMutation({
+    mutationFn: async (key: string) => {
+       // Invoke the new channel
+       const result = await window.huepress.settings.setWebApiKey(key);
+       if (!result.success) throw new Error(result.error);
+       return result.data;
+    },
+    onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: ['api-key-status'] });
+       setWebApiKey('');
+    }
+  });
+
   return (
     <div className={styles.settings}>
       <header className={styles.header}>
@@ -126,6 +141,68 @@ export function Settings() {
               {(saveApiKeyMutation.error as Error).message}
             </p>
           )}
+        </div>
+      </section>
+
+      {/* Web API Section */}
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <Key size={16} />
+          <h2>Web API Configuration</h2>
+        </div>
+        <div className={styles.sectionContent}>
+          <div className={styles.settingRow}>
+            <div className={styles.settingInfo}>
+              <span className={styles.label}>Server URL</span>
+              <span className={styles.hint}>HuePress Web API Endpoint</span>
+            </div>
+            <input
+              type="text"
+              value={settings?.webApiUrl || 'https://huepress.co'}
+              onChange={(e) =>
+                updateSettingsMutation.mutate({ webApiUrl: e.target.value })
+              }
+              className={styles.input}
+              style={{ width: '240px' }}
+            />
+          </div>
+
+          <div className={styles.statusRow} style={{ marginTop: '16px' }}>
+             <span className={styles.label}>Admin Key</span>
+             {apiKeyStatus?.hasWebApiKey ? ( // Checking property added in step 1064, wait... types might complain if I didn't update schema in settings.ts fully, but I did update return object.
+               <span className={styles.statusOk}>
+                 <CheckCircle size={14} />
+                 Configured
+               </span>
+             ) : (
+               <span className={styles.statusError} style={{ color: '#fbbf24' }}>
+                 <AlertCircle size={14} />
+                 Not Configured
+               </span>
+             )}
+          </div>
+          <div className={styles.inputGroup}>
+            <input
+              type="password"
+              value={apiKey} // I should reuse apiKey state or make a new one? `apiKey` state is currently used for Gemini.
+              // I should probably introduce a separate state for webApiKey to avoid confusion if user types in both boxes.
+              // Use a local variable inside render? No, state.
+              // I will leave this for now and add a new state variable in a separate edit block at the top of component.
+              onChange={(e) => setWebApiKey(e.target.value)} 
+              placeholder="Enter Admin API Key"
+              className={styles.input}
+            />
+            <button
+               onClick={() => {
+                 if (webApiKey.trim()) saveWebApiKeyMutation.mutate(webApiKey.trim());
+               }}
+               disabled={!webApiKey.trim() || saveWebApiKeyMutation.isPending}
+               className={styles.btnPrimary}
+            >
+               <Save size={14} />
+               {saveWebApiKeyMutation.isPending ? 'Saving...' : 'Save'}
+            </button>
+          </div>
         </div>
       </section>
 
