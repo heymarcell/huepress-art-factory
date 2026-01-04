@@ -30,7 +30,7 @@ export function Export() {
     queryFn: async () => {
       // Include Vectorized for SVG export possibility (or fetch all relevant)
       const result = await window.huepress.ideas.list({
-        status: ['Approved', 'Generated', 'Vectorized'],
+        status: ['Approved', 'Generated', 'Vectorized', 'Exported', 'Published'],
         limit: 1000,
       });
       if (!result.success) throw new Error(result.error);

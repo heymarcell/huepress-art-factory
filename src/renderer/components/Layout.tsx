@@ -8,6 +8,7 @@ import {
   Layers,
   Download,
   Wand2,
+  UploadCloud,
 } from 'lucide-react';
 import styles from './Layout.module.css';
 
@@ -17,6 +18,7 @@ const navItems = [
   { path: '/library', label: 'Library', icon: Library },
   { path: '/vectorize', label: 'Vectorize', icon: Wand2 },
   { path: '/export', label: 'Export', icon: Download },
+  { path: '/publish', label: 'Publish', icon: UploadCloud },
   { path: '/batch-jobs', label: 'Batch Jobs', icon: Layers },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];

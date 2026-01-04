@@ -32,11 +32,12 @@ const STATUS_OPTIONS: IdeaStatus[] = [
   'Queued',
   'Generating',
   'Generated',
+  'Approved',
+  'Vectorized',
+  'Exported',
+  'Published',
   'NeedsAttention',
   'Failed',
-  'Approved',
-  'Exported',
-  'Vectorized',
   'Omitted',
 ];
 

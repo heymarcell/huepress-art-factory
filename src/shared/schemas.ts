@@ -42,6 +42,7 @@ export const IdeaStatusSchema = z.enum([
   "Approved",
   "Vectorized",
   "Exported",
+  "Published",
   "Omitted",
 ]);
 

@@ -119,7 +119,9 @@ export function registerWebHandlers(): void {
       const duration = ((Date.now() - startTime) / 1000).toFixed(2);
       log.info(`Web Sync Success (${duration}s):`, result);
       
-      // Update local status? Maybe not. Just return success.
+      // Update local status to Published
+      db.prepare('UPDATE ideas SET status = ? WHERE id = ?').run('Published', ideaId);
+
       return successResponse(result);
 
     } catch (error: any) {
