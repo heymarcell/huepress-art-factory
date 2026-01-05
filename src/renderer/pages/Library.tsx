@@ -309,18 +309,45 @@ export function Library() {
     }
   };
 
+  /* APPROVED_LIKE_STATUSES moved to top level or defined here for scope */
+  const APPROVED_LIKE_STATUSES = ['Approved', 'Vectorized', 'Published'];
+
   const checkForDuplicates = async () => {
     setCheckingDuplicates(true);
     try {
       const result = await window.huepress.ideas.findDuplicates();
       if (result.success && result.data.length > 0) {
         let groups = result.data;
+
+        // If triggered by import (batchId present), filter out "ignored" collisions
+        if (newBatchIdRef.current) {
+           groups = groups.filter(group => {
+             // A group is relevant if it has at least one item from the new batch
+             // AND at least one OTHER item that is NOT 'Omitted'
+             // (i.e., we don't care if a new item collides only with Omitted items)
+             const hasNewItem = group.some(item => item.batch_id === newBatchIdRef.current);
+             if (!hasNewItem) return true; // Keep existing duplicate groups not related to this import
+
+             // Check for collision with non-omitted items
+             const hasRelevantCollision = group.some(item => 
+               item.batch_id !== newBatchIdRef.current && item.status !== 'Omitted'
+             );
+             
+             return hasRelevantCollision;
+           });
+        }
+        
+        if (groups.length === 0) {
+           if (!newBatchIdRef.current) alert('No duplicates found!');
+           // If it was an auto-check and we filtered everything out, just do nothing (don't show modal)
+           return;
+        }
         
         // Sort groups: prioritize new imports and mixed-status groups, all-approved at end
         const batchId = newBatchIdRef.current;
         groups = groups.sort((a, b) => {
-          const aAllApproved = a.every(item => item.status === 'Approved');
-          const bAllApproved = b.every(item => item.status === 'Approved');
+          const aAllApproved = a.every(item => APPROVED_LIKE_STATUSES.includes(item.status));
+          const bAllApproved = b.every(item => APPROVED_LIKE_STATUSES.includes(item.status));
           
           // All-approved groups go to the end
           if (aAllApproved && !bAllApproved) return 1;
@@ -340,7 +367,7 @@ export function Library() {
         // Auto-collapse all-approved groups
         const toCollapse = new Set<number>();
         groups.forEach((group, index) => {
-          if (group.every(item => item.status === 'Approved')) {
+          if (group.every(item => APPROVED_LIKE_STATUSES.includes(item.status))) {
             toCollapse.add(index);
           }
         });
@@ -1028,7 +1055,7 @@ export function Library() {
               <div className={styles.duplicatesList}>
                 {duplicates.map((group, i) => {
                   const isCollapsed = collapsedGroups.has(i);
-                  const isAllApproved = group.every(item => item.status === 'Approved');
+                  const isAllApproved = group.every(item => ['Approved', 'Vectorized', 'Published'].includes(item.status));
                   return (
                     <div key={i} className={styles.duplicateGroup}>
                       <div 
@@ -1066,7 +1093,7 @@ export function Library() {
                       <div 
                         key={item.id} 
                         className={styles.duplicateItem}
-                        style={item.status === 'Approved' ? { backgroundColor: 'rgba(34, 197, 94, 0.1)', borderColor: 'rgba(34, 197, 94, 0.3)' } : undefined}
+                        style={['Approved', 'Vectorized', 'Published'].includes(item.status) ? { backgroundColor: 'rgba(34, 197, 94, 0.1)', borderColor: 'rgba(34, 197, 94, 0.3)' } : undefined}
                       >
                         {item.image_path ? (
                           <img 
@@ -1104,7 +1131,7 @@ export function Library() {
                           </div>
                         </div>
                         <div className={styles.duplicateActions}>
-                          {item.status !== 'Approved' && (
+                          {!['Approved', 'Vectorized', 'Published'].includes(item.status) && (
                             <button
                               className={styles.ignoreBtn}
                               onClick={() => {

@@ -15,10 +15,13 @@ export function useBatchPublish() {
   const [batchStatus, setBatchStatus] = useState<BatchStatus>({});
   const [isPublishing, setIsPublishing] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const isPublishingRef = useRef(false);
 
   const publish = useCallback(async (ids: string[]) => {
     if (ids.length === 0) return;
+    if (isPublishingRef.current) return; // Prevent double-submit
 
+    isPublishingRef.current = true;
     setIsPublishing(true);
     abortControllerRef.current = new AbortController();
 
@@ -53,8 +56,6 @@ export function useBatchPublish() {
             [id]: { status: 'success' }
           }));
           // Invalidate to update status in UI ("Draft" -> "Published")
-          // We can do this per-item for responsiveness or at the end. 
-          // Per-item is better for user feedback.
           queryClient.invalidateQueries({ queryKey: ['ideas'] }); 
         } else {
           setBatchStatus(prev => ({
@@ -78,14 +79,18 @@ export function useBatchPublish() {
       activePromises.push(processNext());
     }
 
-    await Promise.all(activePromises);
-    setIsPublishing(false);
+    try {
+      await Promise.all(activePromises);
+    } finally {
+      isPublishingRef.current = false;
+      setIsPublishing(false);
 
-    // Auto-dismiss after 4 seconds
-    setTimeout(() => {
-      if (abortControllerRef.current?.signal.aborted) return; // Don't clear if cancelled/interrupted (user might want to see error)
-      setBatchStatus({});
-    }, 4000);
+      // Auto-dismiss after 4 seconds
+      setTimeout(() => {
+        if (abortControllerRef.current?.signal.aborted) return;
+        setBatchStatus({});
+      }, 4000);
+    }
   }, [queryClient]); // Added queryClient dependency
 
   const cancel = useCallback(() => {

@@ -159,7 +159,8 @@ export class GeminiService {
   }
 
   /**
-   * Poll batch job status
+   * Poll batch job status using REST API with streaming partial parsing
+   * This extracts status fields from the start of the JSON response without loading the full response
    */
   async pollBatchJob(batchJobName: string): Promise<{
     state: string;
@@ -168,44 +169,189 @@ export class GeminiService {
     incompleteCount?: number;
     error?: string;
   }> {
-    const job = await this.client.batches.get({ name: batchJobName });
+    // Use REST API with streaming to extract status fields early
+    // The SDK's batches.get() loads everything including huge base64 images
+    const apiKey = (this.client as unknown as { apiKey: string }).apiKey;
+    const url = `https://generativelanguage.googleapis.com/v1beta/${batchJobName}?key=${apiKey}`;
     
-    const parseCount = (str?: string): number | undefined => {
-      if (!str) return undefined;
-      const n = parseInt(str, 10);
+    const response = await fetch(url);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to poll batch job: ${response.status} ${errorText}`);
+    }
+    
+    // Stream the response and extract just the fields we need from the start
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('No response body available');
+    }
+    
+    const decoder = new TextDecoder();
+    let accumulated = '';
+    const MAX_CHARS = 100000; // Status fields should be in first ~100KB, before the image data
+    
+    // Read chunks until we find completionStats or hit limit
+    let done = false;
+    while (!done && accumulated.length < MAX_CHARS) {
+      const result = await reader.read();
+      done = result.done;
+      if (done || !result.value) break;
+      accumulated += decoder.decode(result.value, { stream: true });
+    }
+    
+    // Cancel the rest of the stream - we don't need the image data for status check
+    reader.cancel();
+    
+    // Extract fields using regex since we have partial JSON
+    // The state field might be at the end of the response, so check for inlinedResponses as success indicator
+    const stateMatch = accumulated.match(/"state"\s*:\s*"([^"]+)"/);
+    const successMatch = accumulated.match(/"successfulCount"\s*:\s*"?(\d+)"?/);
+    const failedMatch = accumulated.match(/"failedCount"\s*:\s*"?(\d+)"?/);
+    const incompleteMatch = accumulated.match(/"incompleteCount"\s*:\s*"?(\d+)"?/);
+    const errorMatch = accumulated.match(/"error"\s*:\s*\{[^}]*"message"\s*:\s*"([^"]+)"/);
+    
+    // If we see inlinedResponses with actual data, the job has completed successfully
+    const hasInlinedData = accumulated.includes('"inlinedResponses"') && accumulated.includes('"data"');
+    
+    // Determine state - if we have inlined data but no explicit state, assume SUCCEEDED
+    let state = stateMatch?.[1];
+    if (!state && hasInlinedData) {
+      state = 'JOB_STATE_SUCCEEDED';
+    }
+    
+    const parseCount = (match: RegExpMatchArray | null): number | undefined => {
+      if (!match) return undefined;
+      const n = parseInt(match[1], 10);
       return isNaN(n) ? undefined : n;
     };
     
     return {
-      state: job.state || 'JOB_STATE_UNSPECIFIED',
-      completedCount: parseCount(job.completionStats?.successfulCount),
-      failedCount: parseCount(job.completionStats?.failedCount),
-      incompleteCount: parseCount(job.completionStats?.incompleteCount),
-      error: job.error?.message,
+      state: state || 'JOB_STATE_UNSPECIFIED',
+      completedCount: parseCount(successMatch),
+      failedCount: parseCount(failedMatch),
+      incompleteCount: parseCount(incompleteMatch),
+      error: errorMatch?.[1],
     };
   }
 
   /**
    * Get batch results from completed inline job
-   * The SDK returns inlinedResponses for inline batch jobs
+   * Uses streaming to handle very large responses that exceed Node.js string limits
    */
   async getBatchResults(batchJobName: string): Promise<{
     ideaId: string;
     imageData?: string;
     error?: string;
   }[]> {
-    const job = await this.client.batches.get({ name: batchJobName });
+    const apiKey = (this.client as unknown as { apiKey: string }).apiKey;
     
-    // For inline requests, results come in inlinedResponses
-    const responses = job.dest?.inlinedResponses || [];
+    // Fetch the full batch job response using streams to handle large payloads
+    // We need the dest.inlinedResponses which contains the image data
+    const url = `https://generativelanguage.googleapis.com/v1beta/${batchJobName}?key=${apiKey}`;
+    
+    const response = await fetch(url);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to get batch results: ${response.status} ${errorText}`);
+    }
+    
+    // For very large responses, we'll stream and process chunks
+    // However, JSON parsing still needs the full string, so for now we'll
+    // try a chunked approach that saves results as we parse them
+    
+    // Read the response as a stream of ArrayBuffer chunks
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('No response body available');
+    }
+    
+    const chunks: Uint8Array[] = [];
+    let totalSize = 0;
+    const MAX_SAFE_SIZE = 400 * 1024 * 1024; // 400MB to be safe below 512MB limit
+    
+    let done = false;
+    while (!done) {
+      const result = await reader.read();
+      done = result.done;
+      if (done || !result.value) break;
+      
+      totalSize += result.value.byteLength;
+      
+      // If we're getting too large, we need to abort and use a different strategy
+      if (totalSize > MAX_SAFE_SIZE) {
+        reader.cancel();
+        throw new Error(`Batch response too large (${Math.round(totalSize / 1024 / 1024)}MB). Consider using file-based batch output instead of inline responses for large batches with 4K images.`);
+      }
+      
+      chunks.push(result.value);
+    }
+    
+    // Concatenate all chunks
+    const fullBuffer = new Uint8Array(totalSize);
+    let offset = 0;
+    for (const chunk of chunks) {
+      fullBuffer.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    
+    // Decode and parse
+    const decoder = new TextDecoder();
+    const jsonString = decoder.decode(fullBuffer);
+    
+    interface BatchJobResponse {
+      // Old SDK structure (keeping for compatibility)
+      dest?: {
+        inlinedResponses?: Array<{
+          metadata?: Record<string, string>;
+          response?: {
+            candidates?: Array<{
+              content?: {
+                parts?: Array<{
+                  inlineData?: { data?: string };
+                }>;
+              };
+            }>;
+          };
+          error?: { message?: string };
+        }>;
+      };
+      // Actual REST API structure (metadata.output.inlinedResponses.inlinedResponses)
+      metadata?: {
+        output?: {
+          inlinedResponses?: {
+            inlinedResponses?: Array<{
+              metadata?: Record<string, string>;
+              response?: {
+                candidates?: Array<{
+                  content?: {
+                    parts?: Array<{
+                      inlineData?: { data?: string };
+                    }>;
+                  };
+                }>;
+              };
+              error?: { message?: string };
+            }>;
+          };
+        };
+      };
+    }
+    
+    const job = JSON.parse(jsonString) as BatchJobResponse;
+    
+    // Try both response structures - REST API uses metadata.output path
+    const responses = 
+      job.metadata?.output?.inlinedResponses?.inlinedResponses ||
+      job.dest?.inlinedResponses || 
+      [];
+    
+    console.log('[DEBUG getBatchResults] Found', responses.length, 'responses');
     
     // Cast responses to access metadata - SDK types may not include it
     return responses.map((resp) => {
-      // Access metadata via custom_id or request metadata
-      const respAny = resp as { metadata?: Record<string, string>; response?: { candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { data?: string } }> } }> }; error?: { message?: string } };
-      const ideaId = respAny.metadata?.ideaId || '';
-      const imageData = respAny.response?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      const error = respAny.error?.message;
+      const ideaId = resp.metadata?.ideaId || '';
+      const imageData = resp.response?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      const error = resp.error?.message;
       
       return { ideaId, imageData, error };
     });

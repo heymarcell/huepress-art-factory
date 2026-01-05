@@ -28,6 +28,7 @@ interface BatchJobRow {
 export function registerBatchHandlers(): void {
   /**
    * Submit ideas to batch generation (slow mode)
+   * Large batches are automatically chunked to avoid response size limits
    */
   ipcMain.handle(IPC_CHANNELS.BATCH_SUBMIT, async (_event, ideaIds: string[]) => {
     try {
@@ -39,6 +40,10 @@ export function registerBatchHandlers(): void {
       if (!ideaIds || ideaIds.length === 0) {
         return errorResponse('No ideas provided');
       }
+      
+      // Max images per batch to avoid response size limits (4K images are ~2-4MB each)
+      // 10 images * ~4MB = ~40MB per batch, well under the 400MB limit
+      const MAX_BATCH_SIZE = 10;
       
       const db = getDatabase();
       const gemini = new GeminiService(apiKey);
@@ -71,12 +76,12 @@ export function registerBatchHandlers(): void {
       }
 
       // Build batch requests using same prompt structure as real-time queue
-      const batchRequests = ideas.map(idea => ({
+      const allBatchRequests = ideas.map(idea => ({
         ideaId: idea.id,
         prompt: JSON.stringify({
           title: idea.title,
           description: idea.description,
-          extendedDescription: idea.extended_description, // Ensure extended_description is used
+          extendedDescription: idea.extended_description,
           skill: idea.skill,
           category: idea.category,
           tags: idea.tags ? JSON.parse(idea.tags) : []
@@ -84,48 +89,74 @@ export function registerBatchHandlers(): void {
         skill: idea.skill,
       }));
       
-      // Create batch job record
-      const batchJobId = ulid();
+      // Chunk into smaller batches to avoid response size limits
+      const chunks: typeof allBatchRequests[] = [];
+      for (let i = 0; i < allBatchRequests.length; i += MAX_BATCH_SIZE) {
+        chunks.push(allBatchRequests.slice(i, i + MAX_BATCH_SIZE));
+      }
       
-      db.prepare(`
-        INSERT INTO batch_jobs (id, status, idea_ids, mode, created_at)
-        VALUES (?, 'pending', ?, 'generate', ?)
-      `).run(batchJobId, JSON.stringify(ideaIds), new Date().toISOString());
+      log.info(`Splitting ${ideaIds.length} ideas into ${chunks.length} batch chunks (max ${MAX_BATCH_SIZE} per chunk)`);
       
       // Update ideas to 'Queued' status
       for (const id of ideaIds) {
         db.prepare("UPDATE ideas SET status = 'Queued' WHERE id = ?").run(id);
       }
       
-      // Submit to Gemini Batch API
-      try {
-        const geminiJobId = await gemini.submitBatchJob(batchRequests, templateImages);
+      const batchJobIds: string[] = [];
+      const geminiJobIds: string[] = [];
+      
+      // Submit each chunk as a separate batch job
+      for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+        const chunk = chunks[chunkIndex];
+        const chunkIdeaIds = chunk.map(r => r.ideaId);
         
-        // Update batch job with Gemini job ID
+        // Create batch job record for this chunk
+        const batchJobId = ulid();
+        
         db.prepare(`
-          UPDATE batch_jobs SET gemini_job_id = ?, status = 'processing' WHERE id = ?
-        `).run(geminiJobId, batchJobId);
+          INSERT INTO batch_jobs (id, status, idea_ids, mode, created_at)
+          VALUES (?, 'pending', ?, 'generate', ?)
+        `).run(batchJobId, JSON.stringify(chunkIdeaIds), new Date().toISOString());
         
-        log.info(`Batch job ${batchJobId} submitted to Gemini (${geminiJobId}), ${ideaIds.length} ideas`);
-        
-        return successResponse({
-          batchJobId,
-          geminiJobId,
-          ideaCount: ideaIds.length,
-        });
-      } catch (submitErr) {
-        // Mark batch job as failed
-        db.prepare(`
-          UPDATE batch_jobs SET status = 'failed', error = ? WHERE id = ?
-        `).run(submitErr instanceof Error ? submitErr.message : 'Submission failed', batchJobId);
-        
-        // Reset idea statuses
-        for (const id of ideaIds) {
-          db.prepare("UPDATE ideas SET status = 'Imported' WHERE id = ?").run(id);
+        try {
+          const geminiJobId = await gemini.submitBatchJob(chunk, templateImages);
+          
+          // Update batch job with Gemini job ID
+          db.prepare(`
+            UPDATE batch_jobs SET gemini_job_id = ?, status = 'processing' WHERE id = ?
+          `).run(geminiJobId, batchJobId);
+          
+          log.info(`Batch chunk ${chunkIndex + 1}/${chunks.length} (${batchJobId}) submitted to Gemini (${geminiJobId}), ${chunkIdeaIds.length} ideas`);
+          
+          batchJobIds.push(batchJobId);
+          geminiJobIds.push(geminiJobId);
+        } catch (submitErr) {
+          // Mark this chunk's batch job as failed
+          db.prepare(`
+            UPDATE batch_jobs SET status = 'failed', error = ? WHERE id = ?
+          `).run(submitErr instanceof Error ? submitErr.message : 'Submission failed', batchJobId);
+          
+          // Reset idea statuses for this chunk only
+          for (const id of chunkIdeaIds) {
+            db.prepare("UPDATE ideas SET status = 'Imported' WHERE id = ?").run(id);
+          }
+          
+          log.error(`Batch chunk ${chunkIndex + 1}/${chunks.length} failed:`, submitErr);
+          // Continue with other chunks instead of failing everything
         }
-        
-        throw submitErr;
       }
+      
+      if (batchJobIds.length === 0) {
+        return errorResponse('All batch chunks failed to submit');
+      }
+      
+      return successResponse({
+        batchJobIds,
+        geminiJobIds,
+        ideaCount: ideaIds.length,
+        chunkCount: chunks.length,
+        successfulChunks: batchJobIds.length,
+      });
     } catch (error) {
       log.error('Error submitting batch job:', error);
       return errorResponse(error instanceof Error ? error.message : 'Unknown error');

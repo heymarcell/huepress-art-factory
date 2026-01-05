@@ -7,6 +7,7 @@ import { initializeDatabase, getAssetsPath, getDatabasePath } from './database';
 import { registerIpcHandlers } from './ipc';
 import { setupSecurity, CSP } from './security';
 import { startBatchPoller, stopBatchPoller } from './services/batch-poller';
+import { startVectorizePoller, stopVectorizePoller } from './services/vectorize-poller';
 import { isPathAllowed } from './utils/paths';
 
 // Register custom protocol privileges
@@ -163,8 +164,9 @@ const initialize = async (): Promise<void> => {
     // Create the window
     createWindow();
 
-    // Start batch poller for slow mode generation
+    // Start background pollers
     startBatchPoller();
+    startVectorizePoller();
   } catch (error) {
     log.error('Failed to initialize application:', error);
     app.quit();
@@ -178,6 +180,7 @@ app.whenReady().then(initialize);
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     stopBatchPoller();
+    stopVectorizePoller();
     app.quit();
   }
 });
